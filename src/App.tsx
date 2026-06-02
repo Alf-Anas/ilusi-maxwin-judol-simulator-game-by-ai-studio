@@ -572,7 +572,11 @@ export default function App() {
       <header className="border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur pb-4 pt-4 px-4 sm:px-6 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Skull className="w-5 h-5 text-red-500 animate-pulse" />
+            <img
+              src="/favicon.ico"
+              alt="Favicon Ilusi Maxwin"
+              className="w-5 h-5 object-contain animate-pulse"
+            />
             <h1 className="font-sans font-black tracking-wider text-sm sm:text-base text-white/90">
               ILUSI MAXWIN <span className="text-[#14f195] text-xs font-mono">Judol Simulator</span>
             </h1>
@@ -814,18 +818,18 @@ export default function App() {
                               onClick={() => handleChoiceSelected(opt)}
                               data-action={opt.action}
                               className={`w-full py-3 px-4 rounded-xl text-left text-xs font-sans font-medium hover:scale-[1.01] transition-all border leading-normal flex justify-between items-center group cursor-pointer ${opt.action === "play"
-                                  ? "bg-red-950/20 text-red-100 hover:text-white border-red-900/40 hover:bg-red-900/30 hover:border-red-600/70"
-                                  : opt.action === "refuse"
-                                    ? "bg-emerald-950/20 text-emerald-100 hover:text-white border-emerald-900/30 hover:bg-emerald-900/30 hover:border-emerald-600/70"
-                                    : "bg-amber-950/20 text-amber-100 hover:text-white border-amber-900/30 hover:bg-amber-900/30 hover:border-amber-600/70"
+                                ? "bg-red-950/20 text-red-100 hover:text-white border-red-900/40 hover:bg-red-900/30 hover:border-red-600/70"
+                                : opt.action === "refuse"
+                                  ? "bg-emerald-950/20 text-emerald-100 hover:text-white border-emerald-900/30 hover:bg-emerald-900/30 hover:border-emerald-600/70"
+                                  : "bg-amber-950/20 text-amber-100 hover:text-white border-amber-900/30 hover:bg-amber-900/30 hover:border-amber-600/70"
                                 }`}
                             >
                               <span>{opt.teks}</span>
                               <span className={`text-[9px] font-mono uppercase py-0.5 px-1.5 rounded transition-all group-hover:scale-105 ${opt.action === "play"
-                                  ? "bg-red-950 border border-red-900 text-red-400"
-                                  : opt.action === "refuse"
-                                    ? "bg-emerald-950 border border-emerald-900 text-emerald-400 font-bold"
-                                    : "bg-amber-950 border border-amber-900 text-amber-400"
+                                ? "bg-red-950 border border-red-900 text-red-400"
+                                : opt.action === "refuse"
+                                  ? "bg-emerald-950 border border-emerald-900 text-emerald-400 font-bold"
+                                  : "bg-amber-950 border border-amber-900 text-amber-400"
                                 }`}>
                                 {opt.action === "play" ? "Play Slot" : opt.action === "refuse" ? "Tolak" : "Ragu"}
                               </span>
