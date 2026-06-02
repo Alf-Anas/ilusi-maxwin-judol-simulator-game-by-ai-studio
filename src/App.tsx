@@ -1,34 +1,35 @@
 import { useState, useEffect } from "react";
-import { 
-  GameSession, 
-  GameStats, 
-  CharacterProfile, 
-  HistoricalSession, 
-  ChoiceLog, 
-  CharacterType 
+import { audioManager } from "./utils/audio";
+import {
+  GameSession,
+  GameStats,
+  CharacterProfile,
+  HistoricalSession,
+  ChoiceLog,
+  CharacterType
 } from "./types";
-import { 
-  saveSession, 
-  getSession, 
-  deleteSession, 
-  saveHistoricalSession, 
-  getHistoricalSessions, 
-  clearAllDB 
+import {
+  saveSession,
+  getSession,
+  deleteSession,
+  saveHistoricalSession,
+  getHistoricalSessions,
+  clearAllDB
 } from "./utils/db";
 import { Typewriter } from "./components/Typewriter";
 import { SlotMachine } from "./components/SlotMachine";
 import { FloatingProfile } from "./components/FloatingProfile";
 import { HistoricalLogs } from "./components/HistoricalLogs";
 import { CharacterSelection } from "./components/CharacterSelection";
-import { 
-  TrendingDown, 
-  Skull, 
-  ShieldCheck, 
-  Volume2, 
-  VolumeX, 
-  RotateCcw, 
-  Sparkles, 
-  Info, 
+import {
+  TrendingDown,
+  Skull,
+  ShieldCheck,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  Sparkles,
+  Info,
   AlertTriangle,
   History,
   PartyPopper,
@@ -51,11 +52,11 @@ const FALLBACK_NARRATIVE = {
 export default function App() {
   // Navigation Screens
   const [screen, setScreen] = useState<"menu" | "init_char" | "sim" | "logs">("menu");
-  
+
   // Game session states
   const [activeSession, setActiveSession] = useState<GameSession | null>(null);
   const [completedRuns, setCompletedRuns] = useState<HistoricalSession[]>([]);
-  
+
   // Checking if there is a restorable session
   const [restorableSession, setRestorableSession] = useState<GameSession | null>(null);
 
@@ -64,7 +65,7 @@ export default function App() {
   const [pilihanOptions, setPilihanOptions] = useState<Array<{ teks: string; action: "play" | "refuse" | "hesitate" }>>([]);
   const [choicesVisible, setChoicesVisible] = useState(false);
   const [galaSpinThreshold, setGalaSpinThreshold] = useState<number>(5);
-  
+
   // Loading indicators for Gemini calls
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -122,6 +123,19 @@ export default function App() {
     }
   }, [isAnalysisOpen]);
 
+  // Handle atmosphere audio synchronization based on screen and mute state
+  useEffect(() => {
+    audioManager.setMute(isAtmosphereMuted);
+  }, [isAtmosphereMuted]);
+
+  useEffect(() => {
+    if (screen === "sim") {
+      audioManager.playBackground();
+    } else {
+      audioManager.stopBackground();
+    }
+  }, [screen]);
+
   // Load initial IndexedDB data on mount
   useEffect(() => {
     async function loadData() {
@@ -143,7 +157,7 @@ export default function App() {
   const handleResumeSession = async () => {
     if (restorableSession) {
       setActiveSession(restorableSession);
-      
+
       // Determine what to display based on their narrative trail
       if (restorableSession.history.length > 0) {
         const lastLog = restorableSession.history[restorableSession.history.length - 1];
@@ -162,7 +176,7 @@ export default function App() {
 
   // Triggering new Gemini narrative fetch
   const handleTriggerNextNarration = async (
-    session: GameSession, 
+    session: GameSession,
     lastAction: "play" | "refuse" | "hesitate" | "start",
     choiceTeks: string,
     slotDetails?: any
@@ -233,7 +247,7 @@ export default function App() {
     } catch (err: any) {
       console.error("Gemini sync error:", err);
       setApiError(err.message || "Ulang koneksi");
-      
+
       // Fallback
       setCurrentNarasi(FALLBACK_NARRATIVE.narasi);
       setPilihanOptions(FALLBACK_NARRATIVE.pilihan as any);
@@ -275,7 +289,7 @@ export default function App() {
 
     setActiveSession(initialSession);
     await saveSession(initialSession);
-    
+
     // Trigger initial narrative
     await handleTriggerNextNarration(initialSession, "start", "Karakter Diinisialisasi");
     setScreen("sim");
@@ -360,7 +374,7 @@ export default function App() {
       nextStats.mentalStatus = 100;
       nextStats.hutangPinjol += 35000000; // forced catastrophic pinjol automatically drawn
       nextStats.hutangTeman += 8000000;
-      
+
       activeSession.stats = nextStats;
       handleTriggerGameDefeat();
       return;
@@ -431,7 +445,7 @@ export default function App() {
     try {
       // Clear current logged in DB and save as Historical
       const textSummary = `Selamat! ${activeSession.profile.name} berhasil membebaskan batin dari jeratan iblis digital judol. Berhasil menolak 7 tawaran berturut-turut!`;
-      
+
       const response = await fetch("/api/gemini/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -467,7 +481,7 @@ export default function App() {
           totalHutang: activeSession.stats.hutangPinjol + activeSession.stats.hutangTeman,
           totalSpins: activeSession.stats.spinCount
         },
-        narrativeConclusion: finalNarrative.slice(0, 150) + "..."
+        narrativeConclusion: finalNarrative
       };
 
       await saveHistoricalSession(archive);
@@ -490,7 +504,7 @@ export default function App() {
     try {
       // Complete devastation sequence
       const textSummary = `Tragis. ${activeSession.profile.name} terperosok ke lubang hitam judi online. Keuangan ludes total, tabungan habis, aset disita, pasangan angkat kaki karena kegilaaanmu.`;
-      
+
       const response = await fetch("/api/gemini/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -553,21 +567,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#e0e0e0] flex flex-col justify-between selection:bg-[#14f195]/30 font-sans">
-      
+
       {/* Immersive Dark Atmosphere Header */}
       <header className="border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur pb-4 pt-4 px-4 sm:px-6 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Skull className="w-5 h-5 text-red-500 animate-pulse" />
             <h1 className="font-sans font-black tracking-wider text-sm sm:text-base text-white/90">
-              ILUSI MAXWIN <span className="text-[#14f195] text-xs font-mono">SIMULATOR</span>
+              ILUSI MAXWIN <span className="text-[#14f195] text-xs font-mono">Judol Simulator</span>
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Audio atmospheric controller */}
             <button
-              onClick={() => setIsAtmosphereMuted(!isAtmosphereMuted)}
+              onClick={() => {
+                audioManager.playClick();
+                setIsAtmosphereMuted(!isAtmosphereMuted);
+              }}
               className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white cursor-pointer transition-all"
               title={isAtmosphereMuted ? "Unmute Ambiance" : "Mute Ambiance"}
             >
@@ -579,7 +596,7 @@ export default function App() {
 
       {/* Main Container Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
-        
+
         {/* SCREEN 1: MAIN MENU */}
         {screen === "menu" && (
           <div className="space-y-6 text-center py-6 sm:py-10 max-w-xl mx-auto">
@@ -589,7 +606,7 @@ export default function App() {
                 ILUSI MAXWIN
               </div>
               <div className="text-[10px] sm:text-xs font-mono tracking-[0.25em] text-[#ef4444] uppercase font-black mt-2">
-                🎰 JALUR REALISTIS KEHANCURAN JUDOL 🎰
+                🎰 Game Simulasi Judi Online 🎰
               </div>
             </div>
 
@@ -601,7 +618,7 @@ export default function App() {
                   <span>SISTEM MENDETEKSI TRAGEDI SEBELUMNYA</span>
                 </div>
                 <p className="text-[11.5px] text-white/80 leading-normal font-sans">
-                  Identitas: <strong>{restorableSession.profile.name} ({restorableSession.profile.type === "pejuang_mahar" ? "Pejuang Mahar" : "Tulang Punggung"})</strong>.<br/>
+                  Identitas: <strong>{restorableSession.profile.name} ({restorableSession.profile.type === "pejuang_mahar" ? "Pejuang Mahar" : "Tulang Punggung"})</strong>.<br />
                   Langkah yang tersimpan di memori terdeteksi. Ingin merenungkan kembali jalurnya?
                 </p>
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
@@ -651,7 +668,7 @@ export default function App() {
                 <span>Kenapa simulator ini dibuat?</span>
               </div>
               <p className="text-white/70">
-                Aplikasi ini dirancang sebagai <strong>media edukasi psikologis</strong>. Online slot didesain secara matematis dengan skema manipulatif (memberikan ilusi kemenangan di awal, lalu mengunci akun ke fase kalah mutlak/rungkad) untuk menyandera dopamin otak manusia. 
+                Aplikasi ini dirancang sebagai <strong>media edukasi psikologis</strong>. Online slot didesain secara matematis dengan skema manipulatif (memberikan ilusi kemenangan di awal, lalu mengunci akun ke fase kalah mutlak/rungkad) untuk menyandera dopamin otak manusia.
               </p>
               <p className="text-white/40 font-mono text-[10px]">
                 *Tidak mengandung transaksi riil. Menampilkan realitas tragis utang pinjol dan kehancuran batin untuk memberikan sadar penuh.
@@ -678,7 +695,7 @@ export default function App() {
         {/* SCREEN 3: ACTIVE SIMULATION BOARD */}
         {screen === "sim" && activeSession && (
           <div className="space-y-6 max-w-xl mx-auto w-full">
-            
+
             {/* Top Status Header */}
             <div className="bg-stone-900/90 border border-stone-850 rounded-2xl p-3.5 flex justify-between items-center gap-4">
               <div className="flex items-center gap-2.5">
@@ -705,15 +722,15 @@ export default function App() {
             {/* AI Life Diagnosis Trigger Button */}
             <button
               onClick={() => setIsAnalysisOpen(true)}
-              className="w-full py-2.5 px-4 bg-[#0a0a0d] hover:bg-stone-900/40 border border-amber-500/10 hover:border-amber-500/40 text-amber-500/90 hover:text-amber-400 font-mono font-bold text-[10px] tracking-wider uppercase rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.02)] animate-pulse"
+              className="w-full py-2.5 px-4 bg-[#0a0a0d] hover:bg-stone-900/40 border border-amber-500/10 hover:border-amber-500/40 text-amber-500/90 hover:text-amber-400 font-mono font-bold text-[10px] tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.02)] animate-pulse"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Diagnosis Nasib &amp; Evaluasi Tobat (AI)</span>
+              <span>Diagnosis Nasib &amp; Evaluasi Tobat</span>
             </button>
 
             {/* THE CORE GAME BOARD */}
             <div className="bg-zinc-950 border border-stone-900/60 rounded-3xl p-5 md:p-6 shadow-2xl relative min-h-[380px] flex flex-col justify-between">
-              
+
               {/* Overlay Slot block if spinning */}
               {showSlotOverlay ? (
                 <div className="py-4">
@@ -744,14 +761,14 @@ export default function App() {
                         <Skull className="w-8 h-8 text-red-500" />
                         <div>ANDA TEWAS FINANSIAL (HANCUR TOTAL!)</div>
                         <p className="text-xs text-stone-300 font-normal mt-1 leading-relaxed">
-                          Keuangan hancur, barang tergadai, masa depan lenyap berselimut denda pinjol. 
+                          Keuangan hancur, barang tergadai, masa depan lenyap berselimut denda pinjol.
                         </p>
                       </div>
                     )}
 
                     {/* Chat Bubble Simulation UI Decorator if active */}
                     {activeSession.status === "playing" && (
-                      <div className="flex gap-1.5 items-center font-mono text-[9px] text-stone-500 uppercase">
+                      <div className="flex gap-1.5 items-center font-mono text-[9px] text-stone-500">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                         <span>Mungkin, semesta sedang mempermainkanmu...</span>
                       </div>
@@ -759,8 +776,8 @@ export default function App() {
 
                     {/* Actual Typewriter active narrative */}
                     {!isLoadingApi && currentNarasi && (
-                      <Typewriter 
-                        text={currentNarasi} 
+                      <Typewriter
+                        text={currentNarasi}
                         onComplete={() => setChoicesVisible(true)}
                       />
                     )}
@@ -769,8 +786,8 @@ export default function App() {
                     {isLoadingApi && (
                       <div className="flex flex-col items-center justify-center py-8 gap-3">
                         <RefreshCw className="w-8 h-8 animate-spin text-amber-500" />
-                        <span className="text-[10px] text-stone-500 font-mono uppercase tracking-widest animate-pulse">
-                          MENYUSUN SKENARIO DERITA... (GEMINI API)
+                        <span className="text-[10px] text-stone-500 font-mono tracking-widest animate-pulse">
+                          Semesta sedang menyiapkan takdirmu...
                         </span>
                       </div>
                     )}
@@ -784,7 +801,7 @@ export default function App() {
 
                   {/* Contextual Action Buttons */}
                   <div className="pt-6 border-t border-stone-900 mt-6 md:min-h-[140px] flex flex-col justify-end">
-                    
+
                     {activeSession.status === "playing" ? (
                       choicesVisible && !isLoadingApi && (
                         <div className="space-y-2.5">
@@ -796,22 +813,20 @@ export default function App() {
                               key={i}
                               onClick={() => handleChoiceSelected(opt)}
                               data-action={opt.action}
-                              className={`w-full py-3 px-4 rounded-xl text-left text-xs font-sans font-medium hover:scale-[1.01] transition-all border leading-normal flex justify-between items-center group cursor-pointer ${
-                                opt.action === "play"
+                              className={`w-full py-3 px-4 rounded-xl text-left text-xs font-sans font-medium hover:scale-[1.01] transition-all border leading-normal flex justify-between items-center group cursor-pointer ${opt.action === "play"
                                   ? "bg-red-950/20 text-red-100 hover:text-white border-red-900/40 hover:bg-red-900/30 hover:border-red-600/70"
                                   : opt.action === "refuse"
                                     ? "bg-emerald-950/20 text-emerald-100 hover:text-white border-emerald-900/30 hover:bg-emerald-900/30 hover:border-emerald-600/70"
                                     : "bg-amber-950/20 text-amber-100 hover:text-white border-amber-900/30 hover:bg-amber-900/30 hover:border-amber-600/70"
-                              }`}
+                                }`}
                             >
                               <span>{opt.teks}</span>
-                              <span className={`text-[9px] font-mono uppercase py-0.5 px-1.5 rounded transition-all group-hover:scale-105 ${
-                                opt.action === "play"
+                              <span className={`text-[9px] font-mono uppercase py-0.5 px-1.5 rounded transition-all group-hover:scale-105 ${opt.action === "play"
                                   ? "bg-red-950 border border-red-900 text-red-400"
                                   : opt.action === "refuse"
                                     ? "bg-emerald-950 border border-emerald-900 text-emerald-400 font-bold"
                                     : "bg-amber-950 border border-amber-900 text-amber-400"
-                              }`}>
+                                }`}>
                                 {opt.action === "play" ? "Play Slot" : opt.action === "refuse" ? "Tolak" : "Ragu"}
                               </span>
                             </button>
@@ -821,9 +836,6 @@ export default function App() {
                     ) : (
                       // GameOver/Victory buttons
                       <div className="space-y-3">
-                        <div className="bg-stone-900 p-3 rounded-xl border border-stone-850 text-stone-400 text-center text-xs">
-                          Alur pencapaian batinmu telah diarsip ke dalam IndexedDB. Klik tombol di bawah untuk bercermin di menu utama.
-                        </div>
                         <button
                           onClick={handleExitToMenu}
                           className="w-full py-3 bg-stone-900 border border-stone-800 hover:bg-stone-850 text-stone-200 font-display font-medium text-xs tracking-wider uppercase rounded-xl transition-all cursor-pointer"
@@ -838,9 +850,9 @@ export default function App() {
             </div>
 
             {/* Hidden Floating Profile Dashboard */}
-            <FloatingProfile 
-              profile={activeSession.profile} 
-              stats={activeSession.stats} 
+            <FloatingProfile
+              profile={activeSession.profile}
+              stats={activeSession.stats}
             />
           </div>
         )}
@@ -870,11 +882,11 @@ export default function App() {
       {isAnalysisOpen && activeSession && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-[#09090b] border border-amber-500/30 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-[0_0_50px_rgba(245,158,11,0.15)] relative max-h-[90vh] overflow-y-auto">
-            
+
             {/* Close Button */}
             <button
-               onClick={() => setIsAnalysisOpen(false)}
-               className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors cursor-pointer"
+              onClick={() => setIsAnalysisOpen(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -914,7 +926,7 @@ export default function App() {
               </div>
             ) : analysisResult ? (
               <div className="space-y-6">
-                
+
                 {/* 1. Psychological Tamparan/Summary */}
                 <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl leading-relaxed">
                   <div className="text-[9px] text-amber-500 font-mono uppercase tracking-widest mb-1 font-bold">
@@ -984,7 +996,20 @@ export default function App() {
       {/* Real-time warning alert floating footer */}
       <footer className="py-4 border-t border-stone-900 text-center text-stone-600 text-[10px] sm:text-xs">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p>© 2026 Ilusi Maxwin: Judol Simulator Game. Dibuat dengan cinta untuk kesadaran sosial.</p>
+          <p>
+            © 2026 Ilusi Maxwin: Judol Simulator Game.{' '}
+            <span className="block sm:inline">
+              Dibuat dengan cinta untuk kesadaran sosial oleh{' '}
+              <a
+                href="https://geoit.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-stone-500 hover:text-red-400 underline underline-offset-2 transition-colors"
+              >
+                GeoIT Developer
+              </a>
+            </span>
+          </p>
           <div className="flex gap-3 text-stone-500">
             <span className="hover:text-red-400">#JanganDepo</span>
             <span className="hover:text-red-400">#RungkadNoMore</span>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { GameStats } from "../types";
+import { audioManager } from "../utils/audio";
 import { Coins, AlertTriangle, Play, Sparkles, RefreshCcw } from "lucide-react";
 
 interface SlotMachineProps {
@@ -74,6 +75,9 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     setJustResult(null);
     setSlotMessage("SISTEM GACOR SEDANG MEMUTAR ALGORITMA...");
 
+    // Trigger spinning sound effect
+    audioManager.playSpin();
+
     let reelsInterval: NodeJS.Timeout;
     let duration = 0;
 
@@ -116,6 +120,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           text: `SENSATIONAL WIN! Jackpot Zeus turun. Dapat untung Rp ${finalGain.toLocaleString("id-ID")}`
         });
         setSlotMessage("Pecah petir gila! Bandar baik kan? Sekali lagi pasti Maxwin nih!");
+        audioManager.playWin();
       } else if (currentSpinIndex >= galaSpinThreshold || currentStats.keuangan <= selectedBet) {
         // GALA SEMUA (SUDDEN DEATH / bankrupcy triggered at randomized threshold or when remaining liquid cash is low)
         isGalaSemua = true;
@@ -131,6 +136,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           text: `RUNGKAD TOTAL (GALA SEMUA)! Saldo lu disapu bersih oleh Bandar!`
         });
         setSlotMessage("AKUN DIKUNCI! ZEUS MENYAPU BERSIH SELURUH TABUNGAN DAN DANA NIKAH LU!");
+        audioManager.playLose();
       } else {
         // SPIN 3 OR NORMAL MID-GAME SPIN (Forced to Lose / Pasti Kalah)
         finalWon = false;
@@ -147,6 +153,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           text: `Rungkad! Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ludes.`
         });
         setSlotMessage("Aduh sedikit lagi dapet scatter petir merah! Ayo double depo biar modal balik!");
+        audioManager.playLose();
       }
 
       setReels(finalSymbols);
@@ -249,7 +256,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         </div>
 
         {/* Bet Selection buttons */}
-        {!isSpinning && maxAffordableBet > 0 && (
+        {!isSpinning && !hasSpun && maxAffordableBet > 0 && (
           <div>
             <label className="text-white/40 font-mono text-[10px] uppercase tracking-wider block mb-2 text-center">
               Pilih Nominal Taruhan (Bet Size)
@@ -258,7 +265,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               {standardBets.map((bet) => (
                 <button
                   key={bet}
-                  onClick={() => setSelectedBet(bet)}
+                  onClick={() => {
+                    audioManager.playClick();
+                    setSelectedBet(bet);
+                  }}
                   disabled={isSpinning}
                   className={`py-2 px-1 rounded-xl text-[11px] font-bold font-mono transition-all border ${
                     selectedBet === bet
@@ -271,7 +281,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               ))}
               {/* All In Trigger */}
               <button
-                onClick={() => setSelectedBet(maxAffordableBet)}
+                onClick={() => {
+                  audioManager.playClick();
+                  setSelectedBet(maxAffordableBet);
+                }}
                 disabled={isSpinning}
                 className={`py-2 px-1 col-span-3 rounded-xl text-[11px] font-bold font-mono transition-all border ${
                   selectedBet === maxAffordableBet
@@ -290,6 +303,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           {hasSpun && pendingResult ? (
             <button
               onClick={() => {
+                audioManager.playClick();
                 onSpinComplete(
                   pendingResult.won,
                   pendingResult.amountChanged,
@@ -300,7 +314,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               }}
               className="flex-1 py-3 px-4 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-wider uppercase rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(20,241,149,0.35)] hover:shadow-[0_0_25px_rgba(20,241,149,0.5)] animate-pulse"
             >
-              AMBIL HASIL & LIHAT TAKDIR ➔
+              Lanjutkan ➔
             </button>
           ) : (
             <button
@@ -324,7 +338,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
           {!isSpinning && !hasSpun && (
             <button
-              onClick={onClose}
+              onClick={() => {
+                audioManager.playClick();
+                onClose();
+              }}
               className="py-3 px-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-sans font-bold text-xs rounded-xl transition-colors"
             >
               Kembali
@@ -332,15 +349,6 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           )}
         </div>
       </div>
-
-      {isGalaWarning && !isSpinning && (
-        <div className="mt-4 bg-red-950/20 border border-red-800/40 rounded p-2.5 flex items-start gap-2 animate-pulse">
-          <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-          <p className="text-[10px] text-red-400 leading-normal">
-            <strong>PERINGATAN BAHAYA:</strong> Anda terjerat hutang tersembunyi. Putaran berikutnya berpotensi memicu skenario bangkrut total (gala semua) jika algoritma bandar memutuskan mengunci modal.
-          </p>
-        </div>
-      )}
     </div>
   );
 };

@@ -28,9 +28,19 @@ export const Typewriter: React.FC<TypewriterProps> = ({
     }
     lastTextRef.current = text;
 
+    // Convert pipe separators into double newlines for proper markdown blocks
+    const cleanedText = text
+      ? text
+          .replace(/ \||\| /g, "\n\n")
+          .replace(/\|/g, "\n\n")
+          .split("\n")
+          .map((line) => line.trim())
+          .join("\n")
+      : "";
+
     setDisplayedText("");
     setIsDone(false);
-    textRef.current = text;
+    textRef.current = cleanedText;
     indexRef.current = 0;
 
     if (intervalRef.current) {
