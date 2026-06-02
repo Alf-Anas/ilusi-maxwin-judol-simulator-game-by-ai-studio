@@ -66,13 +66,12 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                 return (
                   <div key={log.id} className="relative pl-8">
                     {/* Circle Node indicator */}
-                    <span className={`absolute left-2.5 top-1.5 -translate-x-1/2 w-2 h-2 rounded-full border ring-4 ring-[#0a0a0a] ${
-                      log.action === "play" 
-                        ? "bg-red-500 border-red-400 animate-pulse" 
-                        : log.action === "refuse" 
-                          ? "bg-[#14f195] border-[#1ef19c]" 
+                    <span className={`absolute left-2.5 top-1.5 -translate-x-1/2 w-2 h-2 rounded-full border ring-4 ring-[#0a0a0a] ${log.action === "play"
+                        ? "bg-red-500 border-red-400 animate-pulse"
+                        : log.action === "refuse"
+                          ? "bg-[#14f195] border-[#1ef19c]"
                           : "bg-amber-400 border-amber-300"
-                    }`} />
+                      }`} />
 
                     <div className="bg-white/5 rounded-2xl border border-white/10 p-4 hover:border-white/20 transition-all">
                       {/* Top Header */}
@@ -81,13 +80,12 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                           <Clock className="w-3 h-3 text-[#14f195]" />
                           <span>Langkah {index + 1}</span>
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${
-                          log.action === "play" 
-                            ? "bg-red-950/50 text-red-400 border border-red-900/30" 
-                            : log.action === "refuse" 
-                              ? "bg-[#14f195]/10 text-[#14f195] border border-[#14f195]/20" 
+                        <span className={`px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${log.action === "play"
+                            ? "bg-red-950/50 text-red-400 border border-red-900/30"
+                            : log.action === "refuse"
+                              ? "bg-[#14f195]/10 text-[#14f195] border border-[#14f195]/20"
                               : "bg-amber-950/50 text-amber-400 border border-amber-900/30"
-                        }`}>
+                          }`}>
                           {log.action === "play" ? "Slot Spin" : log.action === "refuse" ? "Tolak Main" : "Ragu-Ragu"}
                         </span>
                       </div>
@@ -128,7 +126,7 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                         <div className="flex flex-col">
                           <span className="text-[8px] text-white/40 uppercase">Tabungan Cadangan</span>
                           <span className="text-white mt-0.5">
-                            Rp {log.statsBefore.tabungan.toLocaleString("id-ID")} ➔ 
+                            Rp {log.statsBefore.tabungan.toLocaleString("id-ID")} ➔
                             <span className={log.statsAfter.tabungan < log.statsBefore.tabungan ? "text-red-400 font-bold" : "text-white/80"}>
                               Rp {log.statsAfter.tabungan.toLocaleString("id-ID")}
                             </span>
@@ -139,7 +137,7 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                         <div className="flex flex-col">
                           <span className="text-[8px] text-white/40 uppercase">Beban Utang</span>
                           <span className="text-white mt-0.5 flex flex-wrap items-center gap-0.5">
-                            Rp {hutangBefore.toLocaleString("id-ID")} ➔ 
+                            Rp {hutangBefore.toLocaleString("id-ID")} ➔
                             <span className={hutangAfter > hutangBefore ? "text-red-400 font-bold" : "text-white/80"}>
                               Rp {hutangAfter.toLocaleString("id-ID")}
                             </span>
@@ -150,7 +148,7 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                         <div className="flex flex-col">
                           <span className="text-[8px] text-white/40 uppercase">Tingkat Stres</span>
                           <span className="text-white mt-0.5 flex items-center gap-1">
-                            {log.statsBefore.mentalStatus}% ➔ 
+                            {log.statsBefore.mentalStatus}% ➔
                             <span className={log.statsAfter.mentalStatus > log.statsBefore.mentalStatus ? "text-red-400 font-bold" : "text-[#14f195]"}>
                               {log.statsAfter.mentalStatus}%
                             </span>
@@ -197,11 +195,10 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                       <span className="text-[10px] text-white/40 font-mono">
                         {new Date(hist.timestamp).toLocaleDateString("id-ID")}
                       </span>
-                      <span className={`text-[9px] font-mono uppercase font-black px-1.5 py-0.5 rounded ${
-                        hist.status === "won" 
-                          ? "bg-[#14f195]/10 text-[#14f195] border border-[#14f195]/20" 
+                      <span className={`text-[9px] font-mono uppercase font-black px-1.5 py-0.5 rounded ${hist.status === "won"
+                          ? "bg-[#14f195]/10 text-[#14f195] border border-[#14f195]/20"
                           : "bg-red-950/40 text-red-400 border border-red-900/30"
-                      }`}>
+                        }`}>
                         {hist.status === "won" ? "Selamat (Won)" : "Hancur (Lost)"}
                       </span>
                     </div>
@@ -212,10 +209,6 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                         ({hist.profileType === "pejuang_mahar" ? "Mahar" : hist.profileType === "tulang_punggung" ? "T. Punggung" : "Kustom"})
                       </span>
                     </h4>
-
-                    <p className="text-[11px] text-white/70 italic leading-relaxed mt-2 border-l border-white/15 pl-2">
-                      "{hist.narrativeConclusion}"
-                    </p>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-white/10 font-mono text-[10px] text-white/60 grid grid-cols-2 gap-2 bg-white/5 p-2 rounded-xl">
@@ -232,6 +225,11 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
                       Total Spin: <span className="text-amber-500 block font-bold">{hist.statsSummary.totalSpins} kali</span>
                     </div>
                   </div>
+                  <div>
+                    <p className="text-[11px] text-white/70 italic leading-relaxed mt-2 border-l border-white/15 pl-2">
+                      "{hist.narrativeConclusion}"
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -243,7 +241,7 @@ export const HistoricalLogs: React.FC<HistoricalLogsProps> = ({
           <div className="text-center pt-3">
             <button
               onClick={() => {
-                if(confirm("Yakin ingin menghapus semua rekam jejak tragedi dari memori IndexedDB? Tindakan ini permanen.")) {
+                if (confirm("Yakin ingin menghapus semua rekam jejak tragedi dari memori IndexedDB? Tindakan ini permanen.")) {
                   onClearAll();
                 }
               }}
