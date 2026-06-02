@@ -753,7 +753,7 @@ export default function App() {
                     {activeSession.status === "playing" && (
                       <div className="flex gap-1.5 items-center font-mono text-[9px] text-stone-500 uppercase">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                        <span>MASUKAN NARASI TAKDIR...</span>
+                        <span>Mungkin, semesta sedang mempermainkanmu...</span>
                       </div>
                     )}
 
