@@ -1,0 +1,6 @@
+{
+  "name": "Ilusi Maxwin: Judol Simulator Game",
+  "description": "Game simulator edukasi psikologis interaktif tentang bahaya kecanduan judi online.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
