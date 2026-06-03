@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { GameStats } from "../types";
 import { audioManager } from "../utils/audio";
 import { Coins, AlertTriangle, Play, Sparkles, RefreshCcw } from "lucide-react";
@@ -13,7 +13,7 @@ interface SlotMachineProps {
     balanceAfter: number,
     resultingSymbols: string[],
     isGalaSemua: boolean,
-    multiSpinStats?: Partial<GameStats>
+    multiSpinStats?: Partial<GameStats> & { systemActions?: string[] }
   ) => void;
   onClose: () => void;
 }
@@ -67,6 +67,9 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
   const [hubunganKeluargaTracker, setHubunganKeluargaTracker] = useState(currentStats.hubunganKeluarga);
   const [mentalStatusTracker, setMentalStatusTracker] = useState(currentStats.mentalStatus);
   const [lastPullLossTracker, setLastPullLossTracker] = useState(currentStats.lastPullLoss || 0);
+
+  // Tracking desperate actions taken (pinjol, selling assets, etc.)
+  const systemActionsRef = useRef<string[]>([]);
 
   const [spinCountChoice, setSpinCountChoice] = useState<1 | 5 | 10 | 20>(1);
   const [consecutiveLogs, setConsecutiveLogs] = useState<string[]>([]);
@@ -134,6 +137,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
     setIsSpinning(true);
     setHasSpun(false);
+    systemActionsRef.current = [];
     setPendingResult(null);
     setJustResult(null);
     setConsecutiveLogs([]);
@@ -294,6 +298,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
             const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
             let drawAmount = 0;
             let logMsg = "";
+
+            if (chosenOption && !systemActionsRef.current.includes(chosenOption)) {
+              systemActionsRef.current.push(chosenOption);
+            }
 
             if (chosenOption === "pinjol") {
               drawAmount = 5000000;
@@ -666,6 +674,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                     hubunganKeluarga: hubunganKeluargaTracker,
                     mentalStatus: mentalStatusTracker,
                     lastPullLoss: lastPullLossTracker,
+                    systemActions: systemActionsRef.current,
                   }
                 );
               }}

@@ -127,7 +127,21 @@ STATUS SAAT INI (PENTING):
       const slotInfo = slotResult
         ? `Dia memilih MAIN SLOT GACOR. Hasil putaran slot: ${slotResult.won ? "MENANG (ILUSI/DOPAMIN PALSU)" : "KALAH (RUNGKAD)"}. Saldo berkurang/bertambah: Rp ${slotResult.amountChanged.toLocaleString("id-ID")}. Saldo slot sekarang: Rp ${slotResult.balanceAfter.toLocaleString("id-ID")}`
         : "Dia memilih MAIN SLOT GACOR.";
-      contextActionPrompt = `${slotInfo}. Berikan respons manipulatif bandar atau kepalsuan kemenangan / kekesalan rungkad. Jika dia menang, bandar memberikan ilusi dopamin luar biasa agar dia mau depo lebih gede. Jika dia rungkad, bandar memanasi otaknya agar 'bales dendam'. Tampilkan juga sisipan notifikasi chat panik, DM medsos, atau bisikan batin.`;
+
+      let desperateActs = "";
+      if (slotResult && slotResult.systemActions && slotResult.systemActions.length > 0) {
+        desperateActs = `\nDESPERATE ACTS / AKSI MEMALUKAN YANG BARU SAJA DIA LAKUKAN KARENA SALDO HABIS (SIKSA DAN SINDIR BAGIAN INI SECARA EMOSIONAL DALAM NARASI):`;
+        slotResult.systemActions.forEach((act: string) => {
+          if (act === "pinjol") desperateActs += `\n- Dia baru saja mencairkan pinjaman online (PINJOL) ilegal demi terus deposit! Sindir dia yang terjerat bunga pinjol menggunung ilegal.`;
+          if (act === "tabungan") desperateActs += `\n- Dia baru saja diam-diam membobol celengan tabungan pernikahan/keluarga demi terus bermain! Sebutkan denda moral karena mencuri dana berharga ini.`;
+          if (act === "teman") desperateActs += `\n- Dia baru saja mengemis utang ke teman dekat dengan berbohong / alasan darurat fiktif!`;
+          if (act === "motor") desperateActs += `\n- Dia baru saja menggadaikan motor satu-satunya demi lanjut deposit!`;
+          if (act === "mobil") desperateActs += `\n- Dia baru saja secara desperat menjual murah mobil keluarga kesayangan!`;
+          if (act === "rumah") desperateActs += `\n- Dia baru saja menggadaikan / menjual sertifikat rumah warisan tempat bernaung keluarganya!`;
+        });
+      }
+
+      contextActionPrompt = `${slotInfo}.${desperateActs}\nBerikan respons manipulatif bandar atau kepalsuan kemenangan / kekesalan rungkad. Jika dia menang, bandar memberikan ilusi dopamin luar biasa agar dia mau depo lebih gede. Jika dia rungkad, bandar memanasi otaknya agar 'bales dendam'. Tampilkan juga sisipan notifikasi chat panik, DM medsos, atau bisikan batin. Hubungkan dengan aksi nekat yang baru saja dilakukannya di atas jika ada.`;
     } else if (lastAction === "refuse") {
       contextActionPrompt = `Dia memilih MENOLAK main judol (Refusal berturut-turut: ${refusalCount}/7). Berikan godaan yang lebih gila: misal obrolan grup WhatsApp teman tongkrongan yang flexing habis WD 20 juta malam ini, DM Instagram influencer pamer kunci mobil baru hasil slot, atau video random Facebook berkedok 'Amal Sedekah Admin Gacor' yang mendesak dia bermain sekarang juga. Hubungkan godaan ini dengan kondisi pribadinya (Nikahan atau cicilan keluarga)!`;
     } else if (lastAction === "hesitate") {
@@ -246,7 +260,7 @@ Jika stat keuangan habis dan stress level tinggi, buat surat atau percakapan emo
 // API: Life Evaluation / Status Analysis using Server-Side Gemini API
 app.post("/api/gemini/analyze", async (req, res) => {
   try {
-    const { characterType, characterName, spouseName, currentStats } = req.body;
+    const { characterType, characterName, spouseName, currentStats, historyActions } = req.body;
     const client = getGeminiClient();
 
     let characterDesc = "";
@@ -258,12 +272,26 @@ app.post("/api/gemini/analyze", async (req, res) => {
       characterDesc = `Pemain Kustom bernama '${characterName}' dengan pasangan bernama '${spouseName || "Pasangan"}'`;
     }
 
+    let actionsDesc = "";
+    if (historyActions && historyActions.length > 0) {
+      actionsDesc = `\nAKSI NEKAT / DESPERAT YANG PERNAH DILAKUKAN PEMAIN SELAMA INI (SINDIR KELAKUAN INI KARENA SANGAT MERUSAK HIDUP):`;
+      historyActions.forEach((act: string) => {
+        if (act === "pinjol") actionsDesc += "\n- Mengambil pinjaman online (PINJOL) ilegal berbunga lintah darat.";
+        if (act === "tabungan") actionsDesc += `\n- Diam-diam membobol celengan tabungan menikah/masa depan keluarga (perbuatan mencuri dari orang yang menyayanginya).`;
+        if (act === "teman") actionsDesc += "\n- Membohongi dan memanipulasi teman terdekat demi utang deposit.";
+        if (act === "motor") actionsDesc += "\n- Melepas motor satu-satunya ke gadai ilegal.";
+        if (act === "mobil") actionsDesc += "\n- Jual rugi mobil keluarga kesayangan.";
+        if (act === "rumah") actionsDesc += "\n- Menggadaikan sertifikat rumah warisan peninggalan orang tua.";
+      });
+    }
+
     const systemInstruction = `
 Kamu adalah Psikolog Perilaku Klinis sekaligus Konselor Keuangan yang kritis, dingin, sangat realistis, dan hantam keras dalam game "Ilusi Maxwin".
 Tugasmu adalah menganalisis statistik batin dan finansial karakter korban judi online saat ini dan memberikan evaluasi kehidupan secara jujur, blak-blakan, tanpa ramah tamah palsu.
 Panggil pasangannya/istrinya dengan nama aslinya (yaitu '${spouseName || "pasangan"}') jika membahas hubungan sosial atau dampak kebohongan judol pada kehidupan pribadinya demi memberikan shock therapy asmara yang maksimal.
-Gunkaan bahasa Indonesia yang tajam, agak menyindir, namun mendidik dan memberikan kesadaran penuh.
+Gunakan bahasa Indonesia yang tajam, agak menyindir, namun mendidik dan memberikan kesadaran penuh.
 Sesuaikan kritik batinmu dengan statistik batin mereka (misal jika tabungan/keuangan menipis, sebutkan tentang kehancuran masa depan atau kejatuhan harga diri; jika hubungan dengan pasangan anjlok, sebutkan kehancuran asmara atau ancaman cerai/batal nikah).
+Sindir dan ulas keras aksi-aksi nekat (seperti pinjol, membobol celengan, menggadaikan aset) yang mereka lakukan di bawah ini agar mereka benar-benar sadar!
 
 Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
 {
@@ -288,6 +316,7 @@ Evaluasilah batin dan status kehidupan karakter korban judi ini secara blak-blak
 - Keharmonisan Pasangan: ${currentStats.hubunganPasangan}/100
 - Keharmonisan Keluarga: ${currentStats.hubunganKeluarga}/100
 - Hubungan Teman: ${currentStats.hubunganTeman}/100
+${actionsDesc}
 `,
       config: {
         systemInstruction,

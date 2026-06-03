@@ -120,6 +120,17 @@ export default function App() {
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
+      const historySystemActions: string[] = [];
+      activeSession.history.forEach(log => {
+        if (log.slotOutcome?.systemActions) {
+          log.slotOutcome.systemActions.forEach((act: string) => {
+            if (!historySystemActions.includes(act)) {
+              historySystemActions.push(act);
+            }
+          });
+        }
+      });
+
       const response = await fetch("/api/gemini/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,7 +138,8 @@ export default function App() {
           characterType: activeSession.profile.type,
           characterName: activeSession.profile.name,
           spouseName: activeSession.profile.spouseName,
-          currentStats: activeSession.stats
+          currentStats: activeSession.stats,
+          historyActions: historySystemActions
         })
       });
       if (!response.ok) {
@@ -259,7 +271,8 @@ export default function App() {
             multiplier: slotDetails.won ? 1.5 : 0,
             amountChanged: slotDetails.amountChanged,
             symbols: slotDetails.symbols || ["🎰", "🎰", "🎰"],
-            won: slotDetails.won
+            won: slotDetails.won,
+            systemActions: slotDetails.systemActions
           } : undefined
         };
         session.history.push(logItem);
@@ -384,18 +397,22 @@ export default function App() {
     balanceAfter: number,
     symbols: string[],
     isGalaSemua: boolean,
-    multiSpinStats?: Partial<GameStats>
+    multiSpinStats?: Partial<GameStats> & { systemActions?: string[] }
   ) => {
     if (!activeSession) return;
 
     setShowSlotOverlay(false);
     const nextStats = { ...activeSession.stats };
+    let systemActions: string[] = [];
 
     nextStats.refusalCount = 0; // reset resistance on slot pull
 
     if (multiSpinStats) {
       // Overwrite stats with the precise outcomes accumulated from multi-spin
       Object.assign(nextStats, multiSpinStats);
+      if (multiSpinStats.systemActions) {
+        systemActions = [...multiSpinStats.systemActions];
+      }
       
       // Incremental stress/mental indicators based on losses/spins
       const spinCountDiff = (multiSpinStats.spinCount ?? nextStats.spinCount) - activeSession.stats.spinCount;
@@ -436,6 +453,7 @@ export default function App() {
         nextStats.mentalStatus = 100;
         nextStats.hutangPinjol += 35000000; // forced catastrophic pinjol automatically drawn
         nextStats.hutangTeman += 8000000;
+        systemActions.push("pinjol", "teman");
 
         activeSession.stats = nextStats;
         handleTriggerGameDefeat();
@@ -466,6 +484,7 @@ export default function App() {
 
           if (availableOptions.length > 0) {
             const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+            systemActions.push(chosenOption);
             let drawAmount = 0;
 
             if (chosenOption === "pinjol") {
@@ -537,7 +556,8 @@ export default function App() {
       won,
       amountChanged,
       balanceAfter,
-      symbols
+      symbols,
+      systemActions
     });
   };
 
@@ -946,13 +966,13 @@ export default function App() {
                                 }`}
                             >
                               <span>{opt.teks}</span>
-                              <span className={`text-[9px] font-mono uppercase py-0.5 px-1.5 rounded transition-all group-hover:scale-105 ${opt.action === "play"
+                              <span className={`text-[9px] text-center font-mono uppercase py-0.5 px-1.5 rounded transition-all group-hover:scale-105 ${opt.action === "play"
                                 ? "bg-red-950 border border-red-900 text-red-400"
                                 : opt.action === "refuse"
                                   ? "bg-emerald-950 border border-emerald-900 text-emerald-400 font-bold"
                                   : "bg-amber-950 border border-amber-900 text-amber-400"
                                 }`}>
-                                {opt.action === "play" ? "Play Slot" : opt.action === "refuse" ? "Tolak" : "Ragu"}
+                                {opt.action === "play" ? "Main Slot" : opt.action === "refuse" ? "Tolak" : "Ragu"}
                               </span>
                             </button>
                           ))}

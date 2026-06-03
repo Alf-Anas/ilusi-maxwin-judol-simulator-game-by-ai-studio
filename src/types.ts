@@ -40,6 +40,7 @@ export interface ChoiceLog {
     amountChanged: number;
     symbols: string[];
     won: boolean;
+    systemActions?: string[];
   };
 }
 
