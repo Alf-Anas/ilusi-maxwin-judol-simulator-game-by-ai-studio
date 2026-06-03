@@ -41,6 +41,7 @@ export interface ChoiceLog {
     symbols: string[];
     won: boolean;
     systemActions?: string[];
+    actionSequence?: string[];
   };
 }
 

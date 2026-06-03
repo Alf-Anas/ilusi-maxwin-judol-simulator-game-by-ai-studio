@@ -17,11 +17,11 @@ import {
 interface FloatingProfileProps {
   profile: CharacterProfile;
   stats: GameStats;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export const FloatingProfile: React.FC<FloatingProfileProps> = ({ profile, stats }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
+export const FloatingProfile: React.FC<FloatingProfileProps> = ({ profile, stats, isOpen, onClose }) => {
   // Total debt calculation
   const totalDebt = stats.hutangPinjol + stats.hutangTeman;
 
@@ -40,16 +40,6 @@ export const FloatingProfile: React.FC<FloatingProfileProps> = ({ profile, stats
 
   return (
     <>
-      {/* Floating Toggle Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 bg-black/80 backdrop-blur border border-white/10 hover:border-[#14f195]/40 hover:bg-white/5 text-stone-200 hover:text-[#14f195] py-3 px-5 rounded-full flex items-center gap-2 shadow-2xl transition-all font-sans font-bold text-xs tracking-widest uppercase cursor-pointer"
-        id="profile-hud-toggle"
-      >
-        <span className="text-lg">{profile.avatar || "👤"}</span>
-        <span>Lihat Kondisi Hidup</span>
-      </button>
-
       {/* Modal Overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -57,7 +47,7 @@ export const FloatingProfile: React.FC<FloatingProfileProps> = ({ profile, stats
             
             {/* Close Button */}
             <button
-               onClick={() => setIsOpen(false)}
+               onClick={onClose}
                className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -260,7 +250,7 @@ export const FloatingProfile: React.FC<FloatingProfileProps> = ({ profile, stats
             )}
 
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="mt-6 w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               Kembali ke Layar Simulasi

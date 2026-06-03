@@ -88,6 +88,9 @@ export default function App() {
   } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
+  // Profile overlay open state
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   // Method to query the Server-Side analyze API
   const getSessionLoss = (run: HistoricalSession): number => {
     if (run.netFinancialLoss !== undefined) return run.netFinancialLoss;
@@ -272,7 +275,8 @@ export default function App() {
             amountChanged: slotDetails.amountChanged,
             symbols: slotDetails.symbols || ["🎰", "🎰", "🎰"],
             won: slotDetails.won,
-            systemActions: slotDetails.systemActions
+            systemActions: slotDetails.systemActions,
+            actionSequence: slotDetails.actionSequence
           } : undefined
         };
         session.history.push(logItem);
@@ -397,13 +401,14 @@ export default function App() {
     balanceAfter: number,
     symbols: string[],
     isGalaSemua: boolean,
-    multiSpinStats?: Partial<GameStats> & { systemActions?: string[] }
+    multiSpinStats?: Partial<GameStats> & { systemActions?: string[]; actionSequence?: string[] }
   ) => {
     if (!activeSession) return;
 
     setShowSlotOverlay(false);
     const nextStats = { ...activeSession.stats };
     let systemActions: string[] = [];
+    let actionSequence: string[] = [];
 
     nextStats.refusalCount = 0; // reset resistance on slot pull
 
@@ -412,6 +417,9 @@ export default function App() {
       Object.assign(nextStats, multiSpinStats);
       if (multiSpinStats.systemActions) {
         systemActions = [...multiSpinStats.systemActions];
+      }
+      if (multiSpinStats.actionSequence) {
+        actionSequence = [...multiSpinStats.actionSequence];
       }
       
       // Incremental stress/mental indicators based on losses/spins
@@ -440,6 +448,13 @@ export default function App() {
       nextStats.spinCount += 1;
       nextStats.keuangan = balanceAfter;
 
+      if (won) {
+        actionSequence.push(`Spin ke-${nextStats.spinCount}: Taruhan Rp ${amountChanged.toLocaleString("id-ID")} ➔ MENANG +Rp ${amountChanged.toLocaleString("id-ID")} (Ilusi JP)`);
+      } else {
+        const betAmt = Math.abs(amountChanged);
+        actionSequence.push(`Spin ke-${nextStats.spinCount}: Taruhan Rp ${betAmt.toLocaleString("id-ID")} ➔ RUNGKAD -Rp ${betAmt.toLocaleString("id-ID")}`);
+      }
+
       if (isGalaSemua) {
         // TOTAL DISASTER WIDGETS COLLAPSE
         nextStats.keuangan = 0;
@@ -454,6 +469,9 @@ export default function App() {
         nextStats.hutangPinjol += 35000000; // forced catastrophic pinjol automatically drawn
         nextStats.hutangTeman += 8000000;
         systemActions.push("pinjol", "teman");
+        actionSequence.push("Gadai Paksa Seluruh Aset Komplit (Motor, Mobil, Rumah) karena gasingan Zeus");
+        actionSequence.push("Pencairan Limit Pinjol Darurat sebesar Rp 35.000.000");
+        actionSequence.push("Mencatut Utang Teman sebesar Rp 8.000.000");
 
         activeSession.stats = nextStats;
         handleTriggerGameDefeat();
@@ -493,6 +511,7 @@ export default function App() {
               nextStats.keuangan += drawAmount;
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 10);
               activeSession.profile.statusMessage = `SALDO TIPIS! Terpaksa mencairkan limit pinjol baru sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi lanjut deposit slot.`;
+              actionSequence.push(`Menarik Pinjol Ilegal sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
             } else if (chosenOption === "tabungan") {
               drawAmount = Math.min(nextStats.tabungan, 10000000);
               nextStats.tabungan -= drawAmount;
@@ -501,6 +520,7 @@ export default function App() {
               nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 25);
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 30);
               activeSession.profile.statusMessage = `BLACK-LIST PINJOL! Terpaksa diam-diam mengambil dari tabungan keluarga sebesar Rp ${drawAmount.toLocaleString("id-ID")}. Hubungan kalian mulai retak...`;
+              actionSequence.push(`Membobol celengan tabungan pernikahan/keluarga sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi lanjut deposit`);
             } else if (chosenOption === "teman") {
               drawAmount = 3000000;
               nextStats.hutangTeman += drawAmount;
@@ -508,6 +528,7 @@ export default function App() {
               nextStats.hubunganTeman = Math.max(0, nextStats.hubunganTeman - 20);
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 15);
               activeSession.profile.statusMessage = `DITOLAK PINJOL! Memohon-mohon pinjam uang kepada teman dekat Rp ${drawAmount.toLocaleString("id-ID")} dengan alasan musibah fiktif.`;
+              actionSequence.push(`Membohongi dan memanipulasi teman terdekat demi sabetan utang Rp ${drawAmount.toLocaleString("id-ID")} demi deposit`);
             } else if (chosenOption === "motor") {
               drawAmount = 8000000;
               nextStats.asetMotor = false;
@@ -515,6 +536,7 @@ export default function App() {
               nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 15);
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 20);
               activeSession.profile.statusMessage = `HAMPIR KANDAS! Terpaksa menggadaikan motor satu-satunya demi tebus Rp ${drawAmount.toLocaleString("id-ID")} untuk deposit Zeus.`;
+              actionSequence.push(`Menggadaikan motor satu-satunya seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
             } else if (chosenOption === "mobil") {
               drawAmount = 25000000;
               nextStats.asetMobil = false;
@@ -523,6 +545,7 @@ export default function App() {
               nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 15);
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 25);
               activeSession.profile.statusMessage = `KRITIS! Menjual paksa mobil keluarga dengan harga miring Rp ${drawAmount.toLocaleString("id-ID")} di pasar gelap untuk recovery deposit.`;
+              actionSequence.push(`Secara desperat menjual miring mobil keluarga kesayangan seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
             } else if (chosenOption === "rumah") {
               drawAmount = 80000000;
               nextStats.asetRumah = false;
@@ -531,6 +554,7 @@ export default function App() {
               nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 40);
               nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 35);
               activeSession.profile.statusMessage = `DESPERATE! Menggadaikan sertifikat rumah warisan seharga Rp ${drawAmount.toLocaleString("id-ID")} hanya demi memburu petir Maxwin!`;
+              actionSequence.push(`Menggadaikan atau melepas sertifikat rumah warisan tempat bernaung keluarga seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
             }
           } else {
             // Officially bankrupt
@@ -557,7 +581,8 @@ export default function App() {
       amountChanged,
       balanceAfter,
       symbols,
-      systemActions
+      systemActions,
+      actionSequence
     });
   };
 
@@ -839,12 +864,21 @@ export default function App() {
           <div className="space-y-6 max-w-xl mx-auto w-full">
 
             {/* Top Status Header */}
-            <div className="bg-stone-900/90 border border-stone-850 rounded-2xl p-3.5 flex justify-between items-center gap-4">
+            <div 
+              onClick={() => {
+                audioManager.playClick();
+                setIsProfileOpen(true);
+              }}
+              className="bg-stone-900/95 border border-stone-850 hover:border-stone-700 rounded-2xl p-3.5 flex justify-between items-center gap-4 cursor-pointer hover:bg-stone-850/90 active:scale-[0.99] transition-all sticky top-[57px] sm:top-[65px] z-25 shadow-xl group"
+            >
               <div className="flex items-center gap-2.5">
-                <span className="text-2xl p-1 bg-stone-950 rounded-lg">{activeSession.profile.avatar}</span>
+                <span className="text-2xl p-1 bg-stone-950 rounded-lg group-hover:scale-110 transition-transform">{activeSession.profile.avatar}</span>
                 <div className="text-left">
-                  <h4 className="font-display font-bold text-xs text-stone-200">
-                    {activeSession.profile.name}
+                  <h4 className="font-display font-semibold text-xs text-stone-200 flex items-center gap-1.5">
+                    <span>{activeSession.profile.name}</span>
+                    <span className="text-[8px] px-1.5 py-0.5 bg-stone-800 text-stone-400 rounded group-hover:text-[#14f195] group-hover:bg-black/50 transition-all font-mono uppercase tracking-wider">
+                      INFO DETIL
+                    </span>
                   </h4>
                   <span className="text-[9px] text-amber-500 uppercase tracking-wider font-mono">
                     GILIRAN KE-{activeSession.turnCount} • SPIN: {activeSession.stats.spinCount} MALK
@@ -853,10 +887,13 @@ export default function App() {
               </div>
 
               {/* Liquid asset Quick tracker */}
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end">
                 <span className="block text-[8px] text-stone-500 font-mono uppercase">Saldo Kas</span>
                 <span className="text-xs font-bold text-emerald-400 font-mono">
                   Rp {activeSession.stats.keuangan.toLocaleString("id-ID")}
+                </span>
+                <span className="text-[7.5px] text-stone-500 font-mono tracking-tighter mt-0.5 group-hover:text-[#14f195] transition-colors">
+                  Klik untuk Kondisi Hidup
                 </span>
               </div>
             </div>
@@ -998,6 +1035,8 @@ export default function App() {
             <FloatingProfile
               profile={activeSession.profile}
               stats={activeSession.stats}
+              isOpen={isProfileOpen}
+              onClose={() => setIsProfileOpen(false)}
             />
           </div>
         )}

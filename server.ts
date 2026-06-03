@@ -141,7 +141,15 @@ STATUS SAAT INI (PENTING):
         });
       }
 
-      contextActionPrompt = `${slotInfo}.${desperateActs}\nBerikan respons manipulatif bandar atau kepalsuan kemenangan / kekesalan rungkad. Jika dia menang, bandar memberikan ilusi dopamin luar biasa agar dia mau depo lebih gede. Jika dia rungkad, bandar memanasi otaknya agar 'bales dendam'. Tampilkan juga sisipan notifikasi chat panik, DM medsos, atau bisikan batin. Hubungkan dengan aksi nekat yang baru saja dilakukannya di atas jika ada.`;
+      let sequenceText = "";
+      if (slotResult && slotResult.actionSequence && slotResult.actionSequence.length > 0) {
+        sequenceText = `\n\nKRONOLOGI DETIL URUTAN AKSI & SPIN PEMAIN DI SESI INI (Ulas & sindir kelakuan menyedihkan, konyol, atau naif ini dalam narasi agar pemain sadar betapa gila dan impulsifnya dia):`;
+        slotResult.actionSequence.forEach((step: string) => {
+          sequenceText += `\n- ${step}`;
+        });
+      }
+
+      contextActionPrompt = `${slotInfo}.${desperateActs}${sequenceText}\nBerikan respons manipulatif bandar atau kepalsuan kemenangan / kekesalan rungkad. Jika dia menang, bandar memberikan ilusi dopamin luar biasa agar dia mau depo lebih gede. Jika dia rungkad, bandar memanasi otaknya agar 'bales dendam'. Tampilkan juga sisipan notifikasi chat panik, DM medsos, atau bisikan batin. Hubungkan dengan aksi nekat dan rincian kronologi transaksi di atas secara detail jika ada.`;
     } else if (lastAction === "refuse") {
       contextActionPrompt = `Dia memilih MENOLAK main judol (Refusal berturut-turut: ${refusalCount}/7). Berikan godaan yang lebih gila: misal obrolan grup WhatsApp teman tongkrongan yang flexing habis WD 20 juta malam ini, DM Instagram influencer pamer kunci mobil baru hasil slot, atau video random Facebook berkedok 'Amal Sedekah Admin Gacor' yang mendesak dia bermain sekarang juga. Hubungkan godaan ini dengan kondisi pribadinya (Nikahan atau cicilan keluarga)!`;
     } else if (lastAction === "hesitate") {

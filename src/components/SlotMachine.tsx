@@ -13,7 +13,7 @@ interface SlotMachineProps {
     balanceAfter: number,
     resultingSymbols: string[],
     isGalaSemua: boolean,
-    multiSpinStats?: Partial<GameStats> & { systemActions?: string[] }
+    multiSpinStats?: Partial<GameStats> & { systemActions?: string[]; actionSequence?: string[] }
   ) => void;
   onClose: () => void;
 }
@@ -70,6 +70,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
   // Tracking desperate actions taken (pinjol, selling assets, etc.)
   const systemActionsRef = useRef<string[]>([]);
+  const actionSequenceRef = useRef<string[]>([]);
 
   const [spinCountChoice, setSpinCountChoice] = useState<1 | 5 | 10 | 20>(1);
   const [consecutiveLogs, setConsecutiveLogs] = useState<string[]>([]);
@@ -138,6 +139,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     setIsSpinning(true);
     setHasSpun(false);
     systemActionsRef.current = [];
+    actionSequenceRef.current = [];
     setPendingResult(null);
     setJustResult(null);
     setConsecutiveLogs([]);
@@ -185,6 +187,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           const luckySymbol = ["🎰", "💎", "💰"][Math.floor(Math.random() * 3)];
           finalSymbols = [luckySymbol, luckySymbol, luckySymbol];
 
+          actionSequenceRef.current.push(
+            `Spin ke-${spinCountTracker + 1}: Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ➔ MENANG +Rp ${finalGain.toLocaleString("id-ID")} (Ilusi JP)`
+          );
+
           setJustResult({
             won: true,
             gain: finalGain,
@@ -199,6 +205,10 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           const symbolA = SLOT_SYMBOLS[Math.floor(Math.random() * 3)];
           const symbolB = SLOT_SYMBOLS[Math.floor(Math.random() * 3)];
           finalSymbols = [symbolA, symbolA, "❌"];
+
+          actionSequenceRef.current.push(
+            `Spin ke-${spinCountTracker + 1}: Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ➔ RUNGKAD -Rp ${selectedBet.toLocaleString("id-ID")}`
+          );
 
           setJustResult({
             won: false,
@@ -309,6 +319,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localWallet += drawAmount;
               localMentalStatus = Math.min(100, localMentalStatus + 10);
               logMsg = `⚠️ [PINJOL OTOMATIS] Saldo tipis! Ajukan pinjol Rp ${drawAmount.toLocaleString("id-ID")}.`;
+              actionSequenceRef.current.push(`Menarik Pinjol Ilegal sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi lanjut deposit`);
               
               setPinjolTracker(localPinjol);
               setMentalStatusTracker(localMentalStatus);
@@ -320,6 +331,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 20);
               localMentalStatus = Math.min(100, localMentalStatus + 15);
               logMsg = `🚨 [BOBOT TABUNGAN] Terpaksa membobol tabungan keluarga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+              actionSequenceRef.current.push(`Membobol celengan tabungan pernikahan/keluarga sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi lanjut deposit`);
 
               setTabunganTracker(localTabungan);
               setHubunganPasanganTracker(localHubunganPasangan);
@@ -331,6 +343,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localWallet += drawAmount;
               localHubunganTeman = Math.max(0, localHubunganTeman - 20);
               logMsg = `🤝 [PINJAM TEMAN] Pinjam Rp ${drawAmount.toLocaleString("id-ID")} kepada teman lama dengan alasan darurat.`;
+              actionSequenceRef.current.push(`Membohongi dan memanipulasi teman terdekat demi sabetan utang Rp ${drawAmount.toLocaleString("id-ID")} demi deposit`);
 
               setHutangTemanTracker(localHutangTeman);
               setHubunganTemanTracker(localHubunganTeman);
@@ -341,6 +354,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localHubunganPasangan = Math.max(0, localHubunganPasangan - 15);
               localMentalStatus = Math.min(100, localMentalStatus + 20);
               logMsg = `🏍️ [GADAI SEPAHAM] Melepas motor kesayangan ke gadai ilegal seharga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+              actionSequenceRef.current.push(`Menggadaikan motor satu-satunya seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
 
               setAsetMotorTracker(false);
               setHubunganPasanganTracker(localHubunganPasangan);
@@ -353,6 +367,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 15);
               localMentalStatus = Math.min(100, localMentalStatus + 25);
               logMsg = `🚗 [LEPAS MOBIL] Terpaksa melego mobil keluarga dengan harga miring Rp ${drawAmount.toLocaleString("id-ID")}!`;
+              actionSequenceRef.current.push(`Secara desperat menjual miring mobil keluarga kesayangan seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
 
               setAsetMobilTracker(false);
               setHubunganPasanganTracker(localHubunganPasangan);
@@ -366,6 +381,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 40);
               localMentalStatus = Math.min(100, localMentalStatus + 35);
               logMsg = `🏠 [SERTIFIKAT RUMAH] Menjual hak milik sertifikat rumah warisan seharga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+              actionSequenceRef.current.push(`Menggadaikan atau melepas sertifikat rumah warisan tempat bernaung keluarga seharga Rp ${drawAmount.toLocaleString("id-ID")} demi terus deposit`);
 
               setAsetRumahTracker(false);
               setHubunganPasanganTracker(localHubunganPasangan);
@@ -397,6 +413,8 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
               symbols: ["❌", "❌", "❌"],
               isGalaSemua: false,
             });
+
+            actionSequenceRef.current.push(`Rungkad Mutlak! Gasingan terhenti di putaran ke-${currentStep + 1} karena seluruh modal dan aset habis.`);
 
             setJustResult({
               won: finalWon,
@@ -438,9 +456,11 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           accumulatedNetChange += stepGain;
 
           logs.unshift(`🎉 [WIN] Spin #${currentStep + 1}: PETIR PECAH! +Rp ${stepGain.toLocaleString("id-ID")}`);
+          actionSequenceRef.current.push(`Spin ke-${localSpinCount}: Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ➔ MENANG +Rp ${stepGain.toLocaleString("id-ID")} (Ilusi JP)`);
           audioManager.playWin();
         } else {
           logs.unshift(`💸 [LOSE] Spin #${currentStep + 1}: Rungkad. -Rp ${selectedBet.toLocaleString("id-ID")}`);
+          actionSequenceRef.current.push(`Spin ke-${localSpinCount}: Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ➔ RUNGKAD -Rp ${selectedBet.toLocaleString("id-ID")}`);
           audioManager.playLose();
         }
 
@@ -675,6 +695,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                     mentalStatus: mentalStatusTracker,
                     lastPullLoss: lastPullLossTracker,
                     systemActions: systemActionsRef.current,
+                    actionSequence: actionSequenceRef.current,
                   }
                 );
               }}
