@@ -30,7 +30,27 @@ export const PEJUANG_NAMES = [
   "Eko Prasetyo",
   "Farhan Halim",
   "Gilang Dirga",
-  "Roni Gunawan"
+  "Roni Gunawan",
+  "Eka Saputra",
+  "Dimas Prasetyo",
+  "Bagus Wicaksono",
+  "Teguh Riyadi",
+  "Dwi Haryanto",
+  "Rian Nugraha",
+  "Agus Siswanto",
+  "Deden Kusuma",
+  "Slamet Rahardjo",
+  "Kurniawan Dwi",
+  "Mulyono Hadi",
+  "Sutrisno Hartono",
+  "Heru Triyono",
+  "Rudi Hermawan",
+  "Ade Permana",
+  "Dani Ramdani",
+  "Candra Wijaya",
+  "Arya Kamandanu",
+  "Galang Pratama",
+  "Rangga Sasana"
 ];
 
 export const PASANGAN_NAMES = [
@@ -63,7 +83,28 @@ export const PASANGAN_NAMES = [
   "Zaskia Mecca",
   "Ayu Tingting",
   "Dewi Perssik",
-  "Lulu Tobing"
+  "Lulu Tobing",
+  "Indah Lestari",
+  "Ratih Purwasih",
+  "Sri Wahyuni",
+  "Dewi Lestari",
+  "Kartini Mulya",
+  "Siti Rahmawati",
+  "Dona Amelia",
+  "Ayu Lestari",
+  "Ratna Sari",
+  "Wulan Guritno",
+  "Siska Kamila",
+  "Eka Putri",
+  "Fitria Rahayu",
+  "Nining Suningsih",
+  "Endang Suhartini",
+  "Rina Nose",
+  "Mila Karmila",
+  "Ria Ricis",
+  "Angel Lelga",
+  "Gisella Anastasia",
+  "Jessica Iskandar"
 ];
 
 // Helper to choose unique pairs of character name and spouse name

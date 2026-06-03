@@ -89,6 +89,32 @@ export default function App() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Method to query the Server-Side analyze API
+  const getSessionLoss = (run: HistoricalSession): number => {
+    if (run.netFinancialLoss !== undefined) return run.netFinancialLoss;
+    const getInitialWealth = (type: string) => {
+      if (type === "pejuang_mahar") return 53000000;
+      if (type === "tulang_punggung") return 135000000;
+      return 30000000;
+    };
+    const initialWealth = getInitialWealth(run.profileType);
+    const finalWealth = run.statsSummary.keuanganAkhir + run.statsSummary.tabunganAkhir - run.statsSummary.totalHutang;
+    return Math.max(0, initialWealth - finalWealth);
+  };
+
+  const getLossBoost = (): number => {
+    if (!activeSession) return 0;
+    const loss = activeSession.stats.lastPullLoss || 0;
+    if (loss > 35000000) return 45;
+    if (loss > 25000000) return 38;
+    if (loss > 16000000) return 30;
+    if (loss > 10000000) return 22;
+    if (loss > 6000000) return 15;
+    if (loss > 3000000) return 10;
+    if (loss > 1000000) return 4;
+    if (loss > 0) return 1;
+    return 0;
+  };
+
   const handleFetchLifeAnalysis = async () => {
     if (!activeSession) return;
     setAnalysisLoading(true);
@@ -282,6 +308,7 @@ export default function App() {
         statusMessage: "Penuh asa untuk masa depan gemilang tanpa noda."
       },
       stats: initialStats,
+      initialStats: { ...initialStats },
       status: "playing",
       history: [],
       turnCount: 1,
@@ -425,20 +452,63 @@ export default function App() {
 
         // Pinjol automatic debt limits & emergency savings breakout if out of cash
         if (nextStats.keuangan <= 100000) {
-          if (nextStats.hutangPinjol < 25000000) {
-            const pinjolAmount = 5000000;
-            nextStats.hutangPinjol += pinjolAmount;
-            nextStats.keuangan += pinjolAmount;
-            activeSession.profile.statusMessage = "SALDO TIPIS! Pinjol otomatis ditarik Rp 5.000.000 demi bertahan hidup.";
-          } else if (nextStats.tabungan > 0) {
-            // Forcefully break wedding/family savings
-            const stealAmount = Math.min(nextStats.tabungan, 10000000);
-            nextStats.tabungan -= stealAmount;
-            nextStats.keuangan += stealAmount;
-            nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 35);
-            nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 25);
-            nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 30);
-            activeSession.profile.statusMessage = `DI-BLACKLIST PINJOL! Terpaksa diam-diam mencairkan Rp ${stealAmount.toLocaleString("id-ID")} dari tabungan keluarga. Hubungan kalian hancur...`;
+          const availableOptions: string[] = [];
+          if (nextStats.hutangPinjol < 35000000) availableOptions.push("pinjol");
+          if (nextStats.tabungan > 0) availableOptions.push("tabungan");
+          if (nextStats.hutangTeman < 15000000 && nextStats.hubunganTeman > 20) availableOptions.push("teman");
+          if (nextStats.asetMotor) availableOptions.push("motor");
+          if (nextStats.asetMobil) availableOptions.push("mobil");
+          if (nextStats.asetRumah) availableOptions.push("rumah");
+
+          if (availableOptions.length > 0) {
+            const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+            let drawAmount = 0;
+
+            if (chosenOption === "pinjol") {
+              drawAmount = 5000000;
+              nextStats.hutangPinjol += drawAmount;
+              nextStats.keuangan += drawAmount;
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 10);
+              activeSession.profile.statusMessage = `SALDO TIPIS! Terpaksa mencairkan limit pinjol baru sebesar Rp ${drawAmount.toLocaleString("id-ID")} demi lanjut deposit slot.`;
+            } else if (chosenOption === "tabungan") {
+              drawAmount = Math.min(nextStats.tabungan, 10000000);
+              nextStats.tabungan -= drawAmount;
+              nextStats.keuangan += drawAmount;
+              nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 35);
+              nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 25);
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 30);
+              activeSession.profile.statusMessage = `BLACK-LIST PINJOL! Terpaksa diam-diam mengambil dari tabungan keluarga sebesar Rp ${drawAmount.toLocaleString("id-ID")}. Hubungan kalian mulai retak...`;
+            } else if (chosenOption === "teman") {
+              drawAmount = 3000000;
+              nextStats.hutangTeman += drawAmount;
+              nextStats.keuangan += drawAmount;
+              nextStats.hubunganTeman = Math.max(0, nextStats.hubunganTeman - 20);
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 15);
+              activeSession.profile.statusMessage = `DITOLAK PINJOL! Memohon-mohon pinjam uang kepada teman dekat Rp ${drawAmount.toLocaleString("id-ID")} dengan alasan musibah fiktif.`;
+            } else if (chosenOption === "motor") {
+              drawAmount = 8000000;
+              nextStats.asetMotor = false;
+              nextStats.keuangan += drawAmount;
+              nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 15);
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 20);
+              activeSession.profile.statusMessage = `HAMPIR KANDAS! Terpaksa menggadaikan motor satu-satunya demi tebus Rp ${drawAmount.toLocaleString("id-ID")} untuk deposit Zeus.`;
+            } else if (chosenOption === "mobil") {
+              drawAmount = 25000000;
+              nextStats.asetMobil = false;
+              nextStats.keuangan += drawAmount;
+              nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 35);
+              nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 15);
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 25);
+              activeSession.profile.statusMessage = `KRITIS! Menjual paksa mobil keluarga dengan harga miring Rp ${drawAmount.toLocaleString("id-ID")} di pasar gelap untuk recovery deposit.`;
+            } else if (chosenOption === "rumah") {
+              drawAmount = 80000000;
+              nextStats.asetRumah = false;
+              nextStats.keuangan += drawAmount;
+              nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 50);
+              nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 40);
+              nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 35);
+              activeSession.profile.statusMessage = `DESPERATE! Menggadaikan sertifikat rumah warisan seharga Rp ${drawAmount.toLocaleString("id-ID")} hanya demi memburu petir Maxwin!`;
+            }
           } else {
             // Officially bankrupt
             nextStats.keuangan = 0;
@@ -501,6 +571,10 @@ export default function App() {
       setActiveSession({ ...activeSession });
 
       // Save to completed logs database
+      const initialWealthWon = (activeSession.initialStats?.keuangan ?? 0) + (activeSession.initialStats?.tabungan ?? 0);
+      const finalWealthWon = activeSession.stats.keuangan + activeSession.stats.tabungan - (activeSession.stats.hutangPinjol + activeSession.stats.hutangTeman);
+      const netLossWon = Math.max(0, initialWealthWon - finalWealthWon);
+
       const archive: HistoricalSession = {
         id: `won-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -513,7 +587,8 @@ export default function App() {
           totalHutang: activeSession.stats.hutangPinjol + activeSession.stats.hutangTeman,
           totalSpins: activeSession.stats.spinCount
         },
-        narrativeConclusion: finalNarrative
+        narrativeConclusion: finalNarrative,
+        netFinancialLoss: netLossWon
       };
 
       await saveHistoricalSession(archive);
@@ -560,6 +635,10 @@ export default function App() {
       setActiveSession({ ...activeSession });
 
       // Save to completed logs database
+      const initialWealthLost = (activeSession.initialStats?.keuangan ?? 0) + (activeSession.initialStats?.tabungan ?? 0);
+      const finalWealthLost = activeSession.stats.keuangan + activeSession.stats.tabungan - (activeSession.stats.hutangPinjol + activeSession.stats.hutangTeman);
+      const netLossLost = Math.max(0, initialWealthLost - finalWealthLost);
+
       const archive: HistoricalSession = {
         id: `lost-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -572,7 +651,8 @@ export default function App() {
           totalHutang: activeSession.stats.hutangPinjol + activeSession.stats.hutangTeman,
           totalSpins: activeSession.stats.spinCount
         },
-        narrativeConclusion: finalNarrative.slice(0, 150) + "..."
+        narrativeConclusion: finalNarrative,
+        netFinancialLoss: netLossLost
       };
 
       await saveHistoricalSession(archive);
@@ -757,15 +837,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* AI Life Diagnosis Trigger Button */}
-            <button
-              onClick={() => setIsAnalysisOpen(true)}
-              className="w-full py-2.5 px-4 bg-[#0a0a0d] hover:bg-stone-900/40 border border-amber-500/10 hover:border-amber-500/40 text-amber-500/90 hover:text-amber-400 font-mono font-bold text-[10px] tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.02)] animate-pulse"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Diagnosis Nasib &amp; Evaluasi Tobat</span>
-            </button>
-
             {/* THE CORE GAME BOARD */}
             <div className="bg-zinc-950 border border-stone-900/60 rounded-3xl p-5 md:p-6 shadow-2xl relative min-h-[380px] flex flex-col justify-between">
 
@@ -775,6 +846,7 @@ export default function App() {
                   <SlotMachine
                     currentStats={activeSession.stats}
                     galaSpinThreshold={galaSpinThreshold}
+                    lossBoost={getLossBoost()}
                     onSpinComplete={handleSlotSpinCompleted}
                     onClose={() => setShowSlotOverlay(false)}
                   />
@@ -835,6 +907,17 @@ export default function App() {
                         ⚡ Koneksi terhambat: {apiError}. Memakai skenario cadangan.
                       </div>
                     )}
+                  </div>
+
+                  {/* AI Life Diagnosis Trigger Button */}
+                  <div className="mt-5 mb-1">
+                    <button
+                      onClick={() => setIsAnalysisOpen(true)}
+                      className="w-full py-3 px-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500 text-amber-400 hover:text-amber-300 font-mono font-bold text-xs tracking-wider rounded-xl transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Diagnosis Nasib &amp; Evaluasi Tobat</span>
+                    </button>
                   </div>
 
                   {/* Contextual Action Buttons */}

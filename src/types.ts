@@ -13,6 +13,7 @@ export interface GameStats {
   refusalCount: number; // Consecutive refusals
   spinCount: number; // Slot plays counter
   initialWinLimit?: number; // Store randomized initial win count limit (0-3)
+  lastPullLoss?: number; // Real-time tracker of the previous slot pull loss for Gacor Boost
 }
 
 export type CharacterType = "pejuang_mahar" | "tulang_punggung" | "custom";
@@ -50,6 +51,7 @@ export interface GameSession {
   history: ChoiceLog[];
   finalSummary?: string;
   turnCount: number;
+  initialStats?: GameStats;
 }
 
 export interface HistoricalSession {
@@ -65,4 +67,5 @@ export interface HistoricalSession {
     totalSpins: number;
   };
   narrativeConclusion: string;
+  netFinancialLoss?: number;
 }

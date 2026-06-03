@@ -6,6 +6,7 @@ import { Coins, AlertTriangle, Play, Sparkles, RefreshCcw } from "lucide-react";
 interface SlotMachineProps {
   currentStats: GameStats;
   galaSpinThreshold: number; // Left for compatibility, but we follow organic limits
+  lossBoost: number; // Loss boost percent (0 to 45)
   onSpinComplete: (
     won: boolean,
     amountChanged: number,
@@ -19,21 +20,34 @@ interface SlotMachineProps {
 
 const SLOT_SYMBOLS = ["🎰", "🍒", "💎", "💰", "❌"];
 
+const formatBetButtonLabel = (bet: number): string => {
+  if (bet >= 1000000) {
+    const million = bet / 1000000;
+    return `${million.toString().replace(".", ",")}jt`;
+  }
+  return `${bet / 1000}rb`;
+};
+
 // Get win rate based on bet sizes relative to current wallet
-const getWinRate = (bet: number, maxWallet: number): number => {
+const getWinRate = (bet: number, maxWallet: number, lossBoostPercent: number): number => {
+  const boostFraction = lossBoostPercent / 100;
+  let baseRate = 0.03;
   // If player did an explicit all-in with high stake, make it highly addictive but lower odds
-  if (bet === maxWallet && maxWallet > 500000) return 0.03; // All-In: 3%
-  if (bet <= 50000) return 0.20;       // 50k: 20%
-  if (bet <= 200000) return 0.15;      // 100k/200k: 15%
-  if (bet <= 500000) return 0.10;      // 500k: 10%
-  if (bet <= 1000500) return 0.07;     // 1000k: 7%
-  if (bet <= 2500500) return 0.05;     // 2500k: 5%
-  return 0.03;
+  if (bet === maxWallet && maxWallet > 500000) baseRate = 0.03; // All-In: 3%
+  else if (bet <= 50000) baseRate = 0.20;       // 50k: 20%
+  else if (bet <= 200000) baseRate = 0.15;      // 100k/200k: 15%
+  else if (bet <= 500000) baseRate = 0.10;      // 500k: 10%
+  else if (bet <= 1000500) baseRate = 0.07;     // 1000k: 7%
+  else if (bet <= 2500500) baseRate = 0.05;     // 2500k: 5%
+  else baseRate = 0.03;
+
+  return Math.min(0.95, baseRate + boostFraction);
 };
 
 export const SlotMachine: React.FC<SlotMachineProps> = ({
   currentStats,
   galaSpinThreshold,
+  lossBoost,
   onSpinComplete,
   onClose,
 }) => {
@@ -42,6 +56,17 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
   const [tabunganTracker, setTabunganTracker] = useState(currentStats.tabungan);
   const [pinjolTracker, setPinjolTracker] = useState(currentStats.hutangPinjol);
   const [spinCountTracker, setSpinCountTracker] = useState(currentStats.spinCount);
+
+  // Extra local trackers to preserve fully randomized emergency states:
+  const [hutangTemanTracker, setHutangTemanTracker] = useState(currentStats.hutangTeman);
+  const [asetMotorTracker, setAsetMotorTracker] = useState(currentStats.asetMotor);
+  const [asetMobilTracker, setAsetMobilTracker] = useState(currentStats.asetMobil);
+  const [asetRumahTracker, setAsetRumahTracker] = useState(currentStats.asetRumah);
+  const [hubunganTemanTracker, setHubunganTemanTracker] = useState(currentStats.hubunganTeman);
+  const [hubunganPasanganTracker, setHubunganPasanganTracker] = useState(currentStats.hubunganPasangan);
+  const [hubunganKeluargaTracker, setHubunganKeluargaTracker] = useState(currentStats.hubunganKeluarga);
+  const [mentalStatusTracker, setMentalStatusTracker] = useState(currentStats.mentalStatus);
+  const [lastPullLossTracker, setLastPullLossTracker] = useState(currentStats.lastPullLoss || 0);
 
   const [spinCountChoice, setSpinCountChoice] = useState<1 | 5 | 10 | 20>(1);
   const [consecutiveLogs, setConsecutiveLogs] = useState<string[]>([]);
@@ -69,6 +94,16 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     setTabunganTracker(currentStats.tabungan);
     setPinjolTracker(currentStats.hutangPinjol);
     setSpinCountTracker(currentStats.spinCount);
+    
+    setHutangTemanTracker(currentStats.hutangTeman);
+    setAsetMotorTracker(currentStats.asetMotor);
+    setAsetMobilTracker(currentStats.asetMobil);
+    setAsetRumahTracker(currentStats.asetRumah);
+    setHubunganTemanTracker(currentStats.hubunganTeman);
+    setHubunganPasanganTracker(currentStats.hubunganPasangan);
+    setHubunganKeluargaTracker(currentStats.hubunganKeluarga);
+    setMentalStatusTracker(currentStats.mentalStatus);
+    setLastPullLossTracker(currentStats.lastPullLoss || 0);
   }, [currentStats]);
 
   const maxAffordableBet = walletTracker;
@@ -92,7 +127,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
   const handleSpin = () => {
     if (isSpinning) return;
-    if (walletTracker <= 0 && tabunganTracker <= 0) {
+    if (walletTracker <= 0 && tabunganTracker <= 0 && !asetMotorTracker && !asetMobilTracker && !asetRumahTracker && (hutangTemanTracker >= 15000000 || hubunganTemanTracker <= 20)) {
       setSlotMessage("DANA LU ABIS (RUNGKAD)! Hubungi pinjol secepatnya untuk lanjut depo.");
       return;
     }
@@ -129,7 +164,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         setIsSpinning(false);
         setHasSpun(true);
 
-        const winRate = getWinRate(selectedBet, walletTracker);
+        const winRate = getWinRate(selectedBet, walletTracker, lossBoost);
         const isNormalWin = !isInitialHook && Math.random() < winRate;
         const finalWon = isInitialHook || isNormalWin;
 
@@ -177,6 +212,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
         setWalletTracker(newWallet);
         setSpinCountTracker(nextSpinCount);
+        setLastPullLossTracker(finalWon ? 0 : selectedBet);
 
         setPendingResult({
           won: finalWon,
@@ -194,6 +230,15 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
       let localWallet = walletTracker;
       let localTabungan = tabunganTracker;
       let localPinjol = pinjolTracker;
+      let localHutangTeman = hutangTemanTracker;
+      let localAsetMotor = asetMotorTracker;
+      let localAsetMobil = asetMobilTracker;
+      let localAsetRumah = asetRumahTracker;
+      let localHubunganTeman = hubunganTemanTracker;
+      let localHubunganPasangan = hubunganPasanganTracker;
+      let localHubunganKeluarga = hubunganKeluargaTracker;
+      let localMentalStatus = mentalStatusTracker;
+
       let localSpinCount = spinCountTracker;
       let accumulatedNetChange = 0;
       let totalWins = 0;
@@ -207,6 +252,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
           // Correct win/lose based on total financial results!
           const finalWon = accumulatedNetChange > 0;
+          setLastPullLossTracker(accumulatedNetChange < 0 ? Math.abs(accumulatedNetChange) : 0);
 
           setPendingResult({
             won: finalWon,
@@ -236,25 +282,95 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
         // Fund verification & dynamic resource injection simulator
         if (localWallet < selectedBet) {
-          if (localPinjol < 25000000) {
-            const pinjolDraw = 5000000;
-            localPinjol += pinjolDraw;
-            localWallet += pinjolDraw;
-            logs.unshift(`⚠️ [PINJOL OTOMATIS] Saldo tipis! Ajukan pinjol Rp ${pinjolDraw.toLocaleString("id-ID")}.`);
-            setPinjolTracker(localPinjol);
-            setWalletTracker(localWallet);
-            audioManager.playWin();
-          } else if (localTabungan > 0) {
-            const stealDraw = Math.min(localTabungan, 10000000);
-            localTabungan -= stealDraw;
-            localWallet += stealDraw;
-            logs.unshift(`🚨 [BOBOT TABUNGAN] Terpaksa membobol tabungan keluarga Rp ${stealDraw.toLocaleString("id-ID")}!`);
-            setTabunganTracker(localTabungan);
+          const availableOptions: string[] = [];
+          if (localPinjol < 35000000) availableOptions.push("pinjol");
+          if (localTabungan > 0) availableOptions.push("tabungan");
+          if (localHutangTeman < 15000000 && localHubunganTeman > 20) availableOptions.push("teman");
+          if (localAsetMotor) availableOptions.push("motor");
+          if (localAsetMobil) availableOptions.push("mobil");
+          if (localAsetRumah) availableOptions.push("rumah");
+
+          if (availableOptions.length > 0) {
+            const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+            let drawAmount = 0;
+            let logMsg = "";
+
+            if (chosenOption === "pinjol") {
+              drawAmount = 5000000;
+              localPinjol += drawAmount;
+              localWallet += drawAmount;
+              localMentalStatus = Math.min(100, localMentalStatus + 10);
+              logMsg = `⚠️ [PINJOL OTOMATIS] Saldo tipis! Ajukan pinjol Rp ${drawAmount.toLocaleString("id-ID")}.`;
+              
+              setPinjolTracker(localPinjol);
+              setMentalStatusTracker(localMentalStatus);
+            } else if (chosenOption === "tabungan") {
+              drawAmount = Math.min(localTabungan, 10000000);
+              localTabungan -= drawAmount;
+              localWallet += drawAmount;
+              localHubunganPasangan = Math.max(0, localHubunganPasangan - 25);
+              localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 20);
+              localMentalStatus = Math.min(100, localMentalStatus + 15);
+              logMsg = `🚨 [BOBOT TABUNGAN] Terpaksa membobol tabungan keluarga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+
+              setTabunganTracker(localTabungan);
+              setHubunganPasanganTracker(localHubunganPasangan);
+              setHubunganKeluargaTracker(localHubunganKeluarga);
+              setMentalStatusTracker(localMentalStatus);
+            } else if (chosenOption === "teman") {
+              drawAmount = 3000000;
+              localHutangTeman += drawAmount;
+              localWallet += drawAmount;
+              localHubunganTeman = Math.max(0, localHubunganTeman - 20);
+              logMsg = `🤝 [PINJAM TEMAN] Pinjam Rp ${drawAmount.toLocaleString("id-ID")} kepada teman lama dengan alasan darurat.`;
+
+              setHutangTemanTracker(localHutangTeman);
+              setHubunganTemanTracker(localHubunganTeman);
+            } else if (chosenOption === "motor") {
+              drawAmount = 8000000;
+              localAsetMotor = false;
+              localWallet += drawAmount;
+              localHubunganPasangan = Math.max(0, localHubunganPasangan - 15);
+              localMentalStatus = Math.min(100, localMentalStatus + 20);
+              logMsg = `🏍️ [GADAI SEPAHAM] Melepas motor kesayangan ke gadai ilegal seharga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+
+              setAsetMotorTracker(false);
+              setHubunganPasanganTracker(localHubunganPasangan);
+              setMentalStatusTracker(localMentalStatus);
+            } else if (chosenOption === "mobil") {
+              drawAmount = 25000000;
+              localAsetMobil = false;
+              localWallet += drawAmount;
+              localHubunganPasangan = Math.max(0, localHubunganPasangan - 35);
+              localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 15);
+              localMentalStatus = Math.min(100, localMentalStatus + 25);
+              logMsg = `🚗 [LEPAS MOBIL] Terpaksa melego mobil keluarga dengan harga miring Rp ${drawAmount.toLocaleString("id-ID")}!`;
+
+              setAsetMobilTracker(false);
+              setHubunganPasanganTracker(localHubunganPasangan);
+              setHubunganKeluargaTracker(localHubunganKeluarga);
+              setMentalStatusTracker(localMentalStatus);
+            } else if (chosenOption === "rumah") {
+              drawAmount = 80000000;
+              localAsetRumah = false;
+              localWallet += drawAmount;
+              localHubunganPasangan = Math.max(0, localHubunganPasangan - 50);
+              localHubunganKeluarga = Math.max(0, localHubunganKeluarga - 40);
+              localMentalStatus = Math.min(100, localMentalStatus + 35);
+              logMsg = `🏠 [SERTIFIKAT RUMAH] Menjual hak milik sertifikat rumah warisan seharga Rp ${drawAmount.toLocaleString("id-ID")}!`;
+
+              setAsetRumahTracker(false);
+              setHubunganPasanganTracker(localHubunganPasangan);
+              setHubunganKeluargaTracker(localHubunganKeluarga);
+              setMentalStatusTracker(localMentalStatus);
+            }
+
+            logs.unshift(logMsg);
             setWalletTracker(localWallet);
             audioManager.playWin();
           } else {
             // Absolute bankruptcy early in multi-run
-            logs.unshift(`❌ [RUNGKAD MUTLAK] Saldo wallet & tabungan habis! Slot terkunci.`);
+            logs.unshift(`❌ [RUNGKAD MUTLAK] Saldo wallet, tabungan, teman & aset habis terjual! Slot terkunci.`);
             setConsecutiveLogs([...logs]);
             setWalletTracker(0);
 
@@ -264,6 +380,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
             // Correct win/lose based on final financial changes
             const finalWon = accumulatedNetChange > 0;
+            setLastPullLossTracker(accumulatedNetChange < 0 ? Math.abs(accumulatedNetChange) : 0);
 
             setPendingResult({
               won: finalWon,
@@ -288,7 +405,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         localSpinCount += 1;
         accumulatedNetChange -= selectedBet;
 
-        const winRate = getWinRate(selectedBet, walletTracker);
+        const winRate = getWinRate(selectedBet, walletTracker, lossBoost);
         let stepWon = false;
 
         if (isInitialHook && spinCountChoice === 5) {
@@ -360,6 +477,11 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         <p className="text-[#14f195] font-sans font-bold text-xs tracking-widest uppercase animate-pulse">
           ⚡ {isGalaWarning ? "PERINGATAN PINJOL: MARGIN KRITIS!" : "SERVER JP SENSASIONAL GACOR"} ⚡
         </p>
+        {lossBoost > 0 && (
+          <div className="mt-1.5 inline-flex items-center gap-1 bg-emerald-900/40 border border-emerald-500/30 text-[#14f195] px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono animate-pulse">
+            💥 GACOR BOOST: +{lossBoost}%
+          </div>
+        )}
         <p className="text-stone-300 font-sans text-xs mt-1.5 italic">
           "{slotMessage}"
         </p>
@@ -468,7 +590,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                         : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
                     }`}
                   >
-                    {(bet / 1000).toFixed(0)}k
+                    {formatBetButtonLabel(bet)}
                   </button>
                 ))}
               </div>
@@ -535,6 +657,15 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                     tabungan: tabunganTracker,
                     hutangPinjol: pinjolTracker,
                     spinCount: spinCountTracker,
+                    hutangTeman: hutangTemanTracker,
+                    asetMotor: asetMotorTracker,
+                    asetMobil: asetMobilTracker,
+                    asetRumah: asetRumahTracker,
+                    hubunganTeman: hubunganTemanTracker,
+                    hubunganPasangan: hubunganPasanganTracker,
+                    hubunganKeluarga: hubunganKeluargaTracker,
+                    mentalStatus: mentalStatusTracker,
+                    lastPullLoss: lastPullLossTracker,
                   }
                 );
               }}
