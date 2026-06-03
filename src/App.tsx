@@ -268,8 +268,8 @@ export default function App() {
     avatar: string,
     initialStats: GameStats
   ) => {
-    // Randomize catastrophe slot spin (4 to 6 spins before total doom)
-    const randomizedThreshold = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
+    // Randomize catastrophe slot spin (4 to 12 spins before total doom)
+    const randomizedThreshold = Math.floor(Math.random() * 9) + 4; // 4, 5, - 12
     setGalaSpinThreshold(randomizedThreshold);
 
     const initialSession: GameSession = {
@@ -290,9 +290,11 @@ export default function App() {
     setActiveSession(initialSession);
     await saveSession(initialSession);
 
+    // Set screen to active cabin instantly before narrative is loaded
+    setScreen("sim");
+
     // Trigger initial narrative
     await handleTriggerNextNarration(initialSession, "start", "Karakter Diinisialisasi");
-    setScreen("sim");
   };
 
   // Core choice handler
@@ -350,70 +352,100 @@ export default function App() {
     amountChanged: number,
     balanceAfter: number,
     symbols: string[],
-    isGalaSemua: boolean
+    isGalaSemua: boolean,
+    multiSpinStats?: Partial<GameStats>
   ) => {
     if (!activeSession) return;
 
     setShowSlotOverlay(false);
     const nextStats = { ...activeSession.stats };
 
-    nextStats.spinCount += 1;
     nextStats.refusalCount = 0; // reset resistance on slot pull
-    nextStats.keuangan = balanceAfter;
 
-    if (isGalaSemua) {
-      // TOTAL DISASTER WIDGETS COLLAPSE
-      nextStats.keuangan = 0;
-      nextStats.tabungan = 0;
-      nextStats.asetRumah = false;
-      nextStats.asetMobil = false;
-      nextStats.asetMotor = false;
-      nextStats.hubunganPasangan = 0;
-      nextStats.hubunganKeluarga = 5;
-      nextStats.hubunganTeman = 5;
-      nextStats.mentalStatus = 100;
-      nextStats.hutangPinjol += 35000000; // forced catastrophic pinjol automatically drawn
-      nextStats.hutangTeman += 8000000;
+    if (multiSpinStats) {
+      // Overwrite stats with the precise outcomes accumulated from multi-spin
+      Object.assign(nextStats, multiSpinStats);
+      
+      // Incremental stress/mental indicators based on losses/spins
+      const spinCountDiff = (multiSpinStats.spinCount ?? nextStats.spinCount) - activeSession.stats.spinCount;
+      const netLoss = amountChanged < 0;
+      
+      if (netLoss) {
+        nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + Math.min(45, spinCountDiff * 8));
+        nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - Math.min(35, spinCountDiff * 6));
+        nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - Math.min(30, spinCountDiff * 5));
+      } else {
+        nextStats.mentalStatus = Math.max(5, nextStats.mentalStatus - 8);
+      }
 
-      activeSession.stats = nextStats;
-      handleTriggerGameDefeat();
-      return;
-    }
-
-    // Normal Spin updates
-    if (won) {
-      // temporary mental stress reduction
-      nextStats.mentalStatus = Math.max(5, nextStats.mentalStatus - 10);
-      nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 4); // family senses bad addiction
-      activeSession.profile.statusMessage = "Eforia JP Paus! Rasa-rasanya ada petunjuk tersembunyi kelancaran finansial.";
+      // Setup dynamic status message depending on the final state
+      if (nextStats.keuangan <= 100000 && nextStats.tabungan <= 0) {
+        activeSession.profile.statusMessage = "RUNGKAD TOTAL! Tabungan habis, saldo ludes, tidak ada lagi aset tersisa.";
+      } else if (nextStats.keuangan <= 100000) {
+        activeSession.profile.statusMessage = "Saldo kritis! Terpaksa berutang pinjol dan mencatut tabungan keluarga demi gasingan Zeus.";
+      } else {
+        activeSession.profile.statusMessage = won 
+          ? "Eforia Gasing Beruntun! Dapat untung tipis yang menyalakan kembali api harapan palsu."
+          : "Lelah berputar beruntun. Saldo kas terkikis tajam tersedot algoritma Zeus.";
+      }
     } else {
-      nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 15);
-      nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 10);
-      nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 8);
-      activeSession.profile.statusMessage = "Kepala cenat-cenut mikirin dana habis. Butuh deposit recovery secepatnya.";
+      nextStats.spinCount += 1;
+      nextStats.keuangan = balanceAfter;
 
-      // Pinjol automatic debt limits & emergency savings breakout if out of cash
-      if (nextStats.keuangan <= 100000) {
-        if (nextStats.hutangPinjol < 25000000) {
-          const pinjolAmount = 5000000;
-          nextStats.hutangPinjol += pinjolAmount;
-          nextStats.keuangan += pinjolAmount;
-          activeSession.profile.statusMessage = "SALDO TIPIS! Pinjol otomatis ditarik Rp 5.000.000 demi bertahan hidup.";
-        } else if (nextStats.tabungan > 0) {
-          // Forcefully break wedding/family savings
-          const stealAmount = Math.min(nextStats.tabungan, 10000000);
-          nextStats.tabungan -= stealAmount;
-          nextStats.keuangan += stealAmount;
-          nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 35);
-          nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 25);
-          nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 30);
-          activeSession.profile.statusMessage = `DI-BLACKLIST PINJOL! Terpaksa diam-diam mencairkan Rp ${stealAmount.toLocaleString("id-ID")} dari tabungan keluarga. Hubungan kalian hancur...`;
-        } else {
-          // Officially bankrupt
-          nextStats.keuangan = 0;
-          activeSession.stats = nextStats;
-          handleTriggerGameDefeat();
-          return;
+      if (isGalaSemua) {
+        // TOTAL DISASTER WIDGETS COLLAPSE
+        nextStats.keuangan = 0;
+        nextStats.tabungan = 0;
+        nextStats.asetRumah = false;
+        nextStats.asetMobil = false;
+        nextStats.asetMotor = false;
+        nextStats.hubunganPasangan = 0;
+        nextStats.hubunganKeluarga = 5;
+        nextStats.hubunganTeman = 5;
+        nextStats.mentalStatus = 100;
+        nextStats.hutangPinjol += 35000000; // forced catastrophic pinjol automatically drawn
+        nextStats.hutangTeman += 8000000;
+
+        activeSession.stats = nextStats;
+        handleTriggerGameDefeat();
+        return;
+      }
+
+      // Normal single Spin updates
+      if (won) {
+        // temporary mental stress reduction
+        nextStats.mentalStatus = Math.max(5, nextStats.mentalStatus - 10);
+        nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 4); // family senses bad addiction
+        activeSession.profile.statusMessage = "Eforia JP Paus! Rasa-rasanya ada petunjuk tersembunyi kelancaran finansial.";
+      } else {
+        nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 15);
+        nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 10);
+        nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 8);
+        activeSession.profile.statusMessage = "Kepala cenat-cenut mikirin dana habis. Butuh deposit recovery secepatnya.";
+
+        // Pinjol automatic debt limits & emergency savings breakout if out of cash
+        if (nextStats.keuangan <= 100000) {
+          if (nextStats.hutangPinjol < 25000000) {
+            const pinjolAmount = 5000000;
+            nextStats.hutangPinjol += pinjolAmount;
+            nextStats.keuangan += pinjolAmount;
+            activeSession.profile.statusMessage = "SALDO TIPIS! Pinjol otomatis ditarik Rp 5.000.000 demi bertahan hidup.";
+          } else if (nextStats.tabungan > 0) {
+            // Forcefully break wedding/family savings
+            const stealAmount = Math.min(nextStats.tabungan, 10000000);
+            nextStats.tabungan -= stealAmount;
+            nextStats.keuangan += stealAmount;
+            nextStats.hubunganPasangan = Math.max(0, nextStats.hubunganPasangan - 35);
+            nextStats.hubunganKeluarga = Math.max(0, nextStats.hubunganKeluarga - 25);
+            nextStats.mentalStatus = Math.min(100, nextStats.mentalStatus + 30);
+            activeSession.profile.statusMessage = `DI-BLACKLIST PINJOL! Terpaksa diam-diam mencairkan Rp ${stealAmount.toLocaleString("id-ID")} dari tabungan keluarga. Hubungan kalian hancur...`;
+          } else {
+            // Officially bankrupt
+            nextStats.keuangan = 0;
+            activeSession.stats = nextStats;
+            handleTriggerGameDefeat();
+            return;
+          }
         }
       }
     }
@@ -557,6 +589,7 @@ export default function App() {
   const handleExitToMenu = () => {
     setActiveSession(null);
     setScreen("menu");
+    window.location.reload();
   };
 
   // Clearing DB history
@@ -684,11 +717,12 @@ export default function App() {
         {/* SCREEN 2: INITIALIZE CHARACTER */}
         {screen === "init_char" && (
           <div className="space-y-6">
-            <CharacterSelection onSelected={handleCharacterSelected} />
+            <CharacterSelection onSelected={handleCharacterSelected} isLoading={isLoadingApi} />
             <div className="text-center">
               <button
-                onClick={() => setScreen("menu")}
-                className="text-stone-500 hover:text-stone-300 transition-colors text-xs font-semibold cursor-pointer underline"
+                onClick={() => !isLoadingApi && setScreen("menu")}
+                disabled={isLoadingApi}
+                className="text-stone-500 hover:text-stone-300 disabled:opacity-40 disabled:hover:text-stone-500 transition-colors text-xs font-semibold cursor-pointer underline"
               >
                 Kembali ke Menu Utama
               </button>

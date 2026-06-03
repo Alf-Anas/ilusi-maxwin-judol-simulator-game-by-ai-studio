@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CharacterType, GameStats } from "../types";
 import { User, Heart, Sparkles, Home, CreditCard, ChevronRight } from "lucide-react";
+import { APP_SESSION_NAMES } from "../utils/constants";
 
 interface CharacterSelectionProps {
   onSelected: (
@@ -9,9 +10,10 @@ interface CharacterSelectionProps {
     avatar: string,
     initialStats: GameStats
   ) => void;
+  isLoading?: boolean;
 }
 
-export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelected }) => {
+export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelected, isLoading }) => {
   const [selectedTab, setSelectedTab] = useState<CharacterType>("pejuang_mahar");
 
   // Custom Form states
@@ -28,7 +30,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         asetRumah: false,
         asetMobil: false,
         asetMotor: true,
-        hubunganPasangan: 85, // Calon istri 'Nisa' penuh harapan
+        hubunganPasangan: 85, // Calon istri Penuh Harapan
         hubunganKeluarga: 90,
         hubunganTeman: 80,
         mentalStatus: 15,
@@ -36,8 +38,9 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         hutangTeman: 0,
         refusalCount: 0,
         spinCount: 0,
+        initialWinLimit: Math.floor(Math.random() * 4), // 0 to 3 guaranteed initial wins
       };
-      onSelected("pejuang_mahar", "Aji Saputra", "🤵", stats);
+      onSelected("pejuang_mahar", APP_SESSION_NAMES.pejuangMahar, "🤵", stats);
     } else {
       // Inisialisasi Tulang Punggung
       const stats: GameStats = {
@@ -46,7 +49,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         asetRumah: true, // under mortgage
         asetMobil: true, // under credit
         asetMotor: true,
-        hubunganPasangan: 92, // Istri 'Siti' penyayang
+        hubunganPasangan: 92, // Istri Penyayang
         hubunganKeluarga: 95, // Anak dekat dengan ayah
         hubunganTeman: 75,
         mentalStatus: 20,
@@ -54,8 +57,9 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         hutangTeman: 0,
         refusalCount: 0,
         spinCount: 0,
+        initialWinLimit: Math.floor(Math.random() * 4), // 0 to 3 guaranteed initial wins
       };
-      onSelected("tulang_punggung", "Pak Bambang", "👨‍👩‍👦", stats);
+      onSelected("tulang_punggung", APP_SESSION_NAMES.tulangPunggung, "👨‍👩‍👦", stats);
     }
   };
 
@@ -78,6 +82,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
       hutangTeman: 0,
       refusalCount: 0,
       spinCount: 0,
+      initialWinLimit: Math.floor(Math.random() * 4), // 0 to 3 guaranteed initial wins
     };
 
     if (initialSocioTier === "miskin_kota") {
@@ -159,7 +164,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
                 <span className="text-3xl p-2 bg-white/5 rounded-xl">🤵</span>
                 <div>
                   <h3 className="font-sans font-bold text-lg text-white">
-                    Aji Saputra (Anak Muda Pejuang Mahar)
+                    {APP_SESSION_NAMES.pejuangMahar} (Anak Muda Pejuang Mahar)
                   </h3>
                   <span className="text-[10px] text-[#14f195] font-mono tracking-wider uppercase">
                     Status: Gaji Pas dapet Jakarta, Target Nikah Dekat
@@ -168,7 +173,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
               </div>
 
               <p className="text-xs text-white/70 leading-relaxed font-sans mb-4">
-                Aji berumur 25 tahun, seorang staf operasional biasa di Jakarta. Dia telah berpacaran dengan Nisa selama 5 tahun. Mertuanya menuntut pesta pernikahan sederhana namun layak senilai Rp 50.000.000 dalam waktu 3 bulan lagi. Tabungannya saat ini terkumpul Rp 45.000.000. Hanya tersisa Rp 5.000.000! Sang mertua mendesak, Aji pusing mencari kekurangan dana...
+                {APP_SESSION_NAMES.pejuangMahar} berumur 25 tahun, seorang staf operasional biasa di Jakarta. Dia telah berpacaran dengan {APP_SESSION_NAMES.pasanganMahar} selama 5 tahun. Mertuanya menuntut pesta pernikahan sederhana namun layak senilai Rp 50.000.000 dalam waktu 3 bulan lagi. Tabungannya saat ini terkumpul Rp 45.000.000. Hanya tersisa Rp 5.000.000! Sang mertua mendesak, {APP_SESSION_NAMES.pejuangMahar.split(" ")[0]} pusing mencari kekurangan dana...
               </p>
 
               {/* Initial Stats Display */}
@@ -183,17 +188,24 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
                   Respek Pacar: <span className="text-amber-500 block font-bold">85% (Penuh Asa)</span>
                 </div>
                 <div className="text-white/60 col-span-2 md:col-span-1">
-                  Aset Utama: <span className="text-stone-350 block">Motor Beat (Satu-satunya)</span>
+                  Aset Utama: <span className="text-stone-355 block">Motor Matic (Satu-satunya)</span>
                 </div>
               </div>
             </div>
 
             <button
               onClick={() => handleSelectPredefined("pejuang_mahar")}
-              className="mt-4 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)]"
+              disabled={isLoading}
+              className="mt-4 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)] disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-pulse"
             >
-              <span>Masuki Kegilaan Sebagai Aji</span>
-              <ChevronRight className="w-4 h-4 text-black" />
+              {isLoading ? (
+                <span>Menyiapkan Takdirmu...</span>
+              ) : (
+                <>
+                  <span>Masuki Kegilaan Sebagai {APP_SESSION_NAMES.pejuangMahar.split(" ")[0]}</span>
+                  <ChevronRight className="w-4 h-4 text-black" />
+                </>
+              )}
             </button>
           </div>
         )}
@@ -205,7 +217,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
                 <span className="text-3xl p-2 bg-white/5 rounded-xl">👨‍👩‍👦</span>
                 <div>
                   <h3 className="font-sans font-bold text-lg text-white">
-                    Pak Bambang (Tumpuan Keluarga Utama)
+                    {APP_SESSION_NAMES.tulangPunggung} (Tumpuan Keluarga Utama)
                   </h3>
                   <span className="text-[10px] text-amber-500 font-mono tracking-wider uppercase">
                     Status: Cicilan Rumah Aktif, Kuliah Anak Pertama
@@ -214,7 +226,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
               </div>
 
               <p className="text-xs text-white/70 leading-relaxed font-sans mb-4">
-                Pak Bambang memiliki istri yang setia, Siti, dan seorang putra yang baru lulus SMA dan ingin masuk Universitas Negeri. Di sisi lain, cicilan KPR rumah tersisa 3 tahun lagi dengan denda keterlambatan yang menumpuk. Tabungan masa depannya Rp 120.000.000, tetapi tagihan uang pangkal kuliah dan renovasi atap dapur yang bocor parah melampaui sisa gajinya. Sebagai tulang punggung, pundaknya serasa mau remuk dihantam inflasi keluarga...
+                {APP_SESSION_NAMES.tulangPunggung} memiliki istri yang setia, {APP_SESSION_NAMES.pasanganKeluarga}, dan seorang putra yang baru lulus SMA dan ingin masuk Universitas Negeri. Di sisi lain, cicilan KPR rumah tersisa 3 tahun lagi dengan denda keterlambatan yang menumpuk. Tabungan masa depannya Rp 120.000.000, tetapi tagihan uang pangkal kuliah dan renovasi atap dapur yang bocor parah melampaui sisa gajinya. Sebagai tulang punggung, pundaknya serasa mau remuk dihantam inflasi keluarga...
               </p>
 
               {/* Initial Stats Display */}
@@ -236,13 +248,21 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
 
             <button
               onClick={() => handleSelectPredefined("tulang_punggung")}
-              className="mt-4 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)]"
+              disabled={isLoading}
+              className="mt-4 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)] disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-pulse"
             >
-              <span>Pikul Beban Takdir Sebagai Pak Bambang</span>
-              <ChevronRight className="w-4 h-4 text-black" />
+              {isLoading ? (
+                <span>Menyiapkan Takdirmu...</span>
+              ) : (
+                <>
+                  <span>Pikul Beban Takdir Sebagai {APP_SESSION_NAMES.tulangPunggung.split(" ")[0]}</span>
+                  <ChevronRight className="w-4 h-4 text-black" />
+                </>
+              )}
             </button>
           </div>
         )}
+
 
         {selectedTab === "custom" && (
           <form onSubmit={handleSelectCustom} className="space-y-4">
@@ -329,10 +349,17 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
 
             <button
               type="submit"
-              className="mt-6 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)]"
+              disabled={isLoading}
+              className="mt-6 w-full py-3 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shadow-[0_0_15px_rgba(20,241,149,0.25)] disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-pulse"
             >
-              <span>Buatkan Karakter & Mulai Kegelapan ini</span>
-              <ChevronRight className="w-4 h-4 text-black" />
+              {isLoading ? (
+                <span>Menyiapkan Takdirmu...</span>
+              ) : (
+                <>
+                  <span>Buatkan Karakter & Mulai Kegelapan ini</span>
+                  <ChevronRight className="w-4 h-4 text-black" />
+                </>
+              )}
             </button>
           </form>
         )}

@@ -5,13 +5,14 @@ import { Coins, AlertTriangle, Play, Sparkles, RefreshCcw } from "lucide-react";
 
 interface SlotMachineProps {
   currentStats: GameStats;
-  galaSpinThreshold: number; // The randomized threshold (e.g. 4, 5, or 6)
+  galaSpinThreshold: number; // Left for compatibility, but we follow organic limits
   onSpinComplete: (
     won: boolean,
     amountChanged: number,
     balanceAfter: number,
     resultingSymbols: string[],
-    isGalaSemua: boolean
+    isGalaSemua: boolean,
+    multiSpinStats?: Partial<GameStats>
   ) => void;
   onClose: () => void;
 }
@@ -24,10 +25,43 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
   onSpinComplete,
   onClose,
 }) => {
-  const currentSpinIndex = currentStats.spinCount + 1;
-  const maxAffordableBet = currentStats.keuangan;
+  // Local trackers for reactive real-time wallet/stats updates
+  const [walletTracker, setWalletTracker] = useState(currentStats.keuangan);
+  const [tabunganTracker, setTabunganTracker] = useState(currentStats.tabungan);
+  const [pinjolTracker, setPinjolTracker] = useState(currentStats.hutangPinjol);
+  const [spinCountTracker, setSpinCountTracker] = useState(currentStats.spinCount);
 
-  // Available bets in IDR
+  const [spinCountChoice, setSpinCountChoice] = useState<1 | 5 | 10 | 20>(1);
+  const [consecutiveLogs, setConsecutiveLogs] = useState<string[]>([]);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [hasSpun, setHasSpun] = useState(false);
+  const [reels, setReels] = useState(["🎰", "💰", "💎"]);
+  const [slotMessage, setSlotMessage] = useState<string>("Suhu Bandar siap memanjakanmu. Pasang depo lu!");
+  const [justResult, setJustResult] = useState<{
+    won: boolean;
+    gain: number;
+    text: string;
+  } | null>(null);
+
+  const [pendingResult, setPendingResult] = useState<{
+    won: boolean;
+    amountChanged: number;
+    balanceAfter: number;
+    symbols: string[];
+    isGalaSemua: boolean;
+  } | null>(null);
+
+  // Synchronize stats if mutated externally
+  useEffect(() => {
+    setWalletTracker(currentStats.keuangan);
+    setTabunganTracker(currentStats.tabungan);
+    setPinjolTracker(currentStats.hutangPinjol);
+    setSpinCountTracker(currentStats.spinCount);
+  }, [currentStats]);
+
+  const maxAffordableBet = walletTracker;
+
+  // Available bets based on local wallet size
   const standardBets = [50000, 200000, 500000, 1000000, 2500000].filter(
     (b) => b <= Math.max(maxAffordableBet, 50000)
   );
@@ -37,25 +71,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     return maxAffordableBet > 0 ? maxAffordableBet : 10000;
   });
 
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [hasSpun, setHasSpun] = useState(false);
-  const [pendingResult, setPendingResult] = useState<{
-    won: boolean;
-    amountChanged: number;
-    balanceAfter: number;
-    symbols: string[];
-    isGalaSemua: boolean;
-  } | null>(null);
-  const [reels, setReels] = useState(["🎰", "💰", "💎"]);
-  const [slotMessage, setSlotMessage] = useState<string>("Suhu Bandar siap memanjakanmu. Pasang depo lu!");
-  const [soundEffect, setSoundEffect] = useState<string>("");
-  const [justResult, setJustResult] = useState<{
-    won: boolean;
-    gain: number;
-    text: string;
-  } | null>(null);
-
-  // Auto-update bet if current money becomes less than selected bet
+  // Automatically adjust selected bet if wallet shrinks
   useEffect(() => {
     if (maxAffordableBet > 0 && selectedBet > maxAffordableBet) {
       setSelectedBet(maxAffordableBet);
@@ -64,7 +80,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
   const handleSpin = () => {
     if (isSpinning) return;
-    if (currentStats.keuangan <= 0 && currentStats.tabungan <= 0) {
+    if (walletTracker <= 0 && tabunganTracker <= 0) {
       setSlotMessage("DANA LU ABIS (RUNGKAD)! Hubungi pinjol secepatnya untuk lanjut depo.");
       return;
     }
@@ -73,110 +89,238 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     setHasSpun(false);
     setPendingResult(null);
     setJustResult(null);
+    setConsecutiveLogs([]);
     setSlotMessage("SISTEM GACOR SEDANG MEMUTAR ALGORITMA...");
 
-    // Trigger spinning sound effect
+    // Sound cue
     audioManager.playSpin();
 
-    let reelsInterval: NodeJS.Timeout;
-    let duration = 0;
+    if (spinCountChoice === 1) {
+      // 1. LEGACY SINGLE PLAY: Maintain high individual slot tension
+      let reelsInterval: NodeJS.Timeout;
+      let duration = 0;
 
-    // Simulate clicking sound
-    setSoundEffect("Tick...");
+      reelsInterval = setInterval(() => {
+        setReels([
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+        ]);
+        duration += 100;
+      }, 100);
 
-    reelsInterval = setInterval(() => {
-      setReels([
-        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
-        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
-        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
-      ]);
-      duration += 100;
-    }, 100);
+      setTimeout(() => {
+        clearInterval(reelsInterval);
+        setIsSpinning(false);
+        setHasSpun(true);
 
-    setTimeout(() => {
-      clearInterval(reelsInterval);
-      setIsSpinning(false);
-      setHasSpun(true);
+        const winLimit = currentStats.initialWinLimit !== undefined ? currentStats.initialWinLimit : 2;
+        const currentSpinNum = spinCountTracker + 1;
+        const isGuaranteedWin = currentSpinNum <= winLimit;
+        const isNormalWin = Math.random() < 0.05; // Subsequent is strictly 5% win chance
 
-      let finalWon = false;
-      let finalGain = 0;
-      let finalSymbols = ["❌", "❌", "❌"];
-      let isGalaSemua = false;
+        let finalWon = false;
+        let finalGain = 0;
+        let finalSymbols = ["❌", "❌", "❌"];
 
-      // CORE MANIPULASI BANDAR LOGIC
-      if (currentSpinIndex <= 2) {
-        // SPIN 1 & 2 (ILUSI KEMENANGAN): Guaranteed small win, about 20% to 50% profit over the current bet.
-        finalWon = true;
-        const profitPercentage = 0.2 + Math.random() * 0.3; // 20% - 50%
-        finalGain = Math.round(selectedBet * profitPercentage);
-        
-        // Winning symbols (Matching symbols but maybe mixed to look convincing)
-        const luckySymbol = ["🎰", "💎", "💰"][Math.floor(Math.random() * 3)];
-        finalSymbols = [luckySymbol, luckySymbol, luckySymbol];
-        
-        setJustResult({
-          won: true,
-          gain: finalGain,
-          text: `SENSATIONAL WIN! Jackpot Zeus turun. Dapat untung Rp ${finalGain.toLocaleString("id-ID")}`
+        if (isGuaranteedWin || isNormalWin) {
+          finalWon = true;
+          // Winner!
+          const profitPercentage = isGuaranteedWin
+            ? (0.2 + Math.random() * 0.3) // 20% - 50% initial win hook
+            : (0.5 + Math.random() * 1.0); // 50% - 150% standard subsequent jackpot
+          
+          finalGain = Math.round(selectedBet * profitPercentage);
+          const luckySymbol = ["🎰", "💎", "💰"][Math.floor(Math.random() * 3)];
+          finalSymbols = [luckySymbol, luckySymbol, luckySymbol];
+
+          setJustResult({
+            won: true,
+            gain: finalGain,
+            text: `SENSATIONAL WIN! Jackpot Zeus turun. Dapat untung Rp ${finalGain.toLocaleString("id-ID")}`
+          });
+          setSlotMessage("Pecah petir gila! Bandar baik kan? Sekali lagi pasti Maxwin nih!");
+          audioManager.playWin();
+        } else {
+          // Loss
+          finalWon = false;
+          finalGain = -selectedBet;
+
+          const symbolA = SLOT_SYMBOLS[Math.floor(Math.random() * 3)];
+          const symbolB = SLOT_SYMBOLS[Math.floor(Math.random() * 3)];
+          finalSymbols = [symbolA, symbolA, "❌"];
+
+          setJustResult({
+            won: false,
+            gain: finalGain,
+            text: `Rungkad! Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ludes.`
+          });
+          setSlotMessage("Aduh sedikit lagi dapet scatter petir merah! Ayo double depo biar modal balik!");
+          audioManager.playLose();
+        }
+
+        setReels(finalSymbols);
+
+        const newWallet = Math.max(0, walletTracker + finalGain);
+        const nextSpinCount = spinCountTracker + 1;
+
+        setWalletTracker(newWallet);
+        setSpinCountTracker(nextSpinCount);
+
+        setPendingResult({
+          won: finalWon,
+          amountChanged: finalGain,
+          balanceAfter: newWallet,
+          symbols: finalSymbols,
+          isGalaSemua: false,
         });
-        setSlotMessage("Pecah petir gila! Bandar baik kan? Sekali lagi pasti Maxwin nih!");
-        audioManager.playWin();
-      } else if (currentSpinIndex >= galaSpinThreshold || currentStats.keuangan <= selectedBet) {
-        // GALA SEMUA (SUDDEN DEATH / bankrupcy triggered at randomized threshold or when remaining liquid cash is low)
-        isGalaSemua = true;
-        finalWon = false;
-        
-        // Deduct ALL cash and wedding savings! High drama!
-        finalGain = -(currentStats.keuangan + currentStats.tabungan);
-        finalSymbols = ["❌", "❌", "❌"];
-        
-        setJustResult({
-          won: false,
-          gain: finalGain,
-          text: `RUNGKAD TOTAL (GALA SEMUA)! Saldo lu disapu bersih oleh Bandar!`
-        });
-        setSlotMessage("AKUN DIKUNCI! ZEUS MENYAPU BERSIH SELURUH TABUNGAN DAN DANA NIKAH LU!");
-        audioManager.playLose();
-      } else {
-        // SPIN 3 OR NORMAL MID-GAME SPIN (Forced to Lose / Pasti Kalah)
-        finalWon = false;
-        finalGain = -selectedBet;
-        
-        // Convincingly close but losing
-        const symbolA = SLOT_SYMBOLS[Math.floor(Math.random() * 2)];
-        const symbolB = SLOT_SYMBOLS[Math.floor(Math.random() * 2)];
-        finalSymbols = [symbolA, symbolA, "❌"];
-        
-        setJustResult({
-          won: false,
-          gain: finalGain,
-          text: `Rungkad! Taruhan Rp ${selectedBet.toLocaleString("id-ID")} ludes.`
-        });
-        setSlotMessage("Aduh sedikit lagi dapet scatter petir merah! Ayo double depo biar modal balik!");
-        audioManager.playLose();
-      }
 
-      setReels(finalSymbols);
+      }, 1500);
 
-      // Report spin stats completion up
-      // balanceAfter is computed inside App.tsx state, but we send information
-      const balanceAfter = Math.max(0, currentStats.keuangan + finalGain);
-      setPendingResult({
-        won: finalWon,
-        amountChanged: finalGain,
-        balanceAfter,
-        symbols: finalSymbols,
-        isGalaSemua,
-      });
+    } else {
+      // 2. CONSECUTIVE MULTI-SPINS FLOW: Quick step loops for dynamical organic money depletion
+      let currentStep = 0;
+      let localWallet = walletTracker;
+      let localTabungan = tabunganTracker;
+      let localPinjol = pinjolTracker;
+      let localSpinCount = spinCountTracker;
+      let accumulatedNetChange = 0;
+      let totalWins = 0;
+      let logs: string[] = [];
 
-    }, 2000);
+      const intervalId = setInterval(() => {
+        if (currentStep >= spinCountChoice) {
+          clearInterval(intervalId);
+          setIsSpinning(false);
+          setHasSpun(true);
+
+          const finalWon = totalWins > 0;
+
+          setPendingResult({
+            won: finalWon,
+            amountChanged: accumulatedNetChange,
+            balanceAfter: localWallet,
+            symbols: ["🎰", totalWins > 0 ? "💰" : "❌", totalWins > 0 ? "💎" : "❌"],
+            isGalaSemua: false,
+          });
+
+          setJustResult({
+            won: finalWon,
+            gain: accumulatedNetChange,
+            text: finalWon
+              ? `Multi-Spin Selesai: Menang ${totalWins}x! Selisih: ${accumulatedNetChange >= 0 ? "+" : ""}Rp ${accumulatedNetChange.toLocaleString("id-ID")}`
+              : `Total Rungkad: Sesi selesai dengan kerugian -Rp ${Math.abs(accumulatedNetChange).toLocaleString("id-ID")}`
+          });
+
+          if (finalWon) {
+            audioManager.playWin();
+            setSlotMessage(`Putaran selesai! Berhasil menang sebanyak ${totalWins}x. Buruan lanjut depo biar JP Maxwin!`);
+          } else {
+            audioManager.playLose();
+            setSlotMessage("Dewa Zeus tertawa puas. Seluruh modalmu ludes tersedot gasingan maut.");
+          }
+          return;
+        }
+
+        // Fund verification & dynamic resource injection simulator
+        if (localWallet < selectedBet) {
+          if (localPinjol < 25000000) {
+            const pinjolDraw = 5000000;
+            localPinjol += pinjolDraw;
+            localWallet += pinjolDraw;
+            logs.unshift(`⚠️ [PINJOL OTOMATIS] Saldo tipis! Ajukan pinjol Rp ${pinjolDraw.toLocaleString("id-ID")}.`);
+            setPinjolTracker(localPinjol);
+            setWalletTracker(localWallet);
+            audioManager.playWin();
+          } else if (localTabungan > 0) {
+            const stealDraw = Math.min(localTabungan, 10000000);
+            localTabungan -= stealDraw;
+            localWallet += stealDraw;
+            logs.unshift(`🚨 [BOBOT TABUNGAN] Terpaksa membobol tabungan keluarga Rp ${stealDraw.toLocaleString("id-ID")}!`);
+            setTabunganTracker(localTabungan);
+            setWalletTracker(localWallet);
+            audioManager.playWin();
+          } else {
+            // Absolute bankruptcy early in multi-run
+            logs.unshift(`❌ [RUNGKAD MUTLAK] Saldo wallet & tabungan habis! Slot terkunci.`);
+            setConsecutiveLogs([...logs]);
+            setWalletTracker(0);
+
+            clearInterval(intervalId);
+            setIsSpinning(false);
+            setHasSpun(true);
+
+            setPendingResult({
+              won: totalWins > 0,
+              amountChanged: accumulatedNetChange,
+              balanceAfter: 0,
+              symbols: ["❌", "❌", "❌"],
+              isGalaSemua: false,
+            });
+
+            setJustResult({
+              won: false,
+              gain: accumulatedNetChange,
+              text: `Kehabisan modal di tengah jalan pada gasingan ke-${currentStep + 1}.`
+            });
+            audioManager.playLose();
+            return;
+          }
+        }
+
+        // Deduct Bet
+        localWallet -= selectedBet;
+        localSpinCount += 1;
+        accumulatedNetChange -= selectedBet;
+
+        const winLimit = currentStats.initialWinLimit !== undefined ? currentStats.initialWinLimit : 2;
+        const isGuaranteedWin = localSpinCount <= winLimit;
+        const isNormalWin = Math.random() < 0.05; // 5% win chance standard subsequently
+
+        let stepWon = false;
+        let stepGain = 0;
+
+        if (isGuaranteedWin || isNormalWin) {
+          stepWon = true;
+          totalWins += 1;
+          const profitPercentage = isGuaranteedWin 
+            ? (0.2 + Math.random() * 0.3) 
+            : (0.5 + Math.random() * 1.0);
+          
+          stepGain = Math.round(selectedBet * (1 + profitPercentage));
+          localWallet += stepGain;
+          accumulatedNetChange += stepGain;
+
+          logs.unshift(`🎉 [WIN] Spin #${currentStep + 1}: PETIR PECAH! +Rp ${stepGain.toLocaleString("id-ID")}`);
+          audioManager.playWin();
+        } else {
+          logs.unshift(`💸 [LOSE] Spin #${currentStep + 1}: Rungkad. -Rp ${selectedBet.toLocaleString("id-ID")}`);
+          audioManager.playLose();
+        }
+
+        // Sync local trackers
+        setWalletTracker(localWallet);
+        setSpinCountTracker(localSpinCount);
+        setConsecutiveLogs([...logs]);
+
+        // Shift reels visually
+        setReels([
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+          SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+        ]);
+
+        currentStep++;
+      }, 180);
+    }
   };
 
-  const isGalaWarning = currentSpinIndex >= galaSpinThreshold - 1;
+  // Check if warning warning sounds/decorations should highlight
+  const isGalaWarning = walletTracker <= 100000 && tabunganTracker <= 0;
 
   return (
     <div className="bg-[#0a0a0a]/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 w-full max-w-md mx-auto relative overflow-hidden shadow-2xl">
-      {/* Decorative Matrix Scanline Header */}
+      {/* Decorative Scanline Header */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-[#14f195] to-red-600 animate-pulse" />
 
       {/* Header Stat & Title */}
@@ -186,14 +330,14 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           <span className="font-sans font-bold text-sm tracking-wider uppercase text-white/85">PETIR_ZEUS_SIMULATOR</span>
         </div>
         <div className="text-white/45 font-mono text-xs">
-          DEPO KE-{currentSpinIndex}
+          DEPO KE-{spinCountTracker + 1}
         </div>
       </div>
 
       {/* Dynamic Casino Banner */}
       <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center mb-5">
         <p className="text-[#14f195] font-sans font-bold text-xs tracking-widest uppercase animate-pulse">
-          ⚡ {isGalaWarning ? "PERINGATAN PINJOL: MARGIN DEPO MAKSIMAL" : "SERVER JP SENSASIONAL GACOR"} ⚡
+          ⚡ {isGalaWarning ? "PERINGATAN PINJOL: MARGIN KRITIS!" : "SERVER JP SENSASIONAL GACOR"} ⚡
         </p>
         <p className="text-stone-300 font-sans text-xs mt-1.5 italic">
           "{slotMessage}"
@@ -227,6 +371,23 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         <div className="absolute inset-x-0 bottom-1 h-1 bg-[#14f195]/10 blur-[2px]" />
       </div>
 
+      {/* Consecutive logs ticker console */}
+      {consecutiveLogs.length > 0 && (
+        <div className="bg-[#050505] border border-white/5 rounded-xl p-3 mb-5 font-mono text-[10px] text-stone-350">
+          <div className="flex justify-between items-center text-white/40 uppercase mb-2 border-b border-white/5 pb-1 tracking-wider text-[8px]">
+            <span>📋 LIVE GASINGAN BERUNTUN LOGS</span>
+            <span className="text-[#14f195] animate-pulse">● PLAYING</span>
+          </div>
+          <div className="max-h-[110px] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 pr-1 select-none text-left">
+            {consecutiveLogs.map((log, idx) => (
+              <div key={idx} className="leading-tight border-l border-white/15 pl-1.5 animate-fadeIn">
+                {log}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Spin Result Area */}
       {justResult && (
         <div
@@ -237,7 +398,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           }`}
         >
           <div className="flex justify-center items-center gap-1.5 font-bold text-sm">
-            {justResult.won ? "🎉 JP PAUS BERUNTUN ARIS!" : "❌ RUNGKAD TOTAL!"}
+            {justResult.won ? "🎉 JP ZEUS PECAH!" : "❌ RUNGKAD!"}
           </div>
           <p className="text-xs font-sans font-medium mt-1 uppercase tracking-tight">
             {justResult.text}
@@ -247,38 +408,50 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
       {/* Stats Counter & Bet Selectors */}
       <div className="space-y-4">
-        {/* Money Stat display */}
-        <div className="flex justify-between items-center text-xs font-mono bg-white/5 p-3 rounded-xl border border-white/10">
-          <span className="text-white/50">SALDO DOMPET:</span>
-          <span className="text-[#14f195] font-black">
-            Rp {maxAffordableBet.toLocaleString("id-ID")}
-          </span>
+        {/* Dynamic Money & Assets Quick Status */}
+        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono bg-white/5 p-3 rounded-xl border border-white/10 text-left">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-white/40 uppercase">ASET KAS:</span>
+            <span className="text-[#14f195] font-bold text-xs">
+              Rp {walletTracker.toLocaleString("id-ID")}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-white/40 uppercase">TABUNGAN:</span>
+            <span className="text-teal-400 font-bold text-xs">
+              Rp {tabunganTracker.toLocaleString("id-ID")}
+            </span>
+          </div>
         </div>
 
         {/* Bet Selection buttons */}
         {!isSpinning && !hasSpun && maxAffordableBet > 0 && (
-          <div>
-            <label className="text-white/40 font-mono text-[10px] uppercase tracking-wider block mb-2 text-center">
-              Pilih Nominal Taruhan (Bet Size)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {standardBets.map((bet) => (
-                <button
-                  key={bet}
-                  onClick={() => {
-                    audioManager.playClick();
-                    setSelectedBet(bet);
-                  }}
-                  disabled={isSpinning}
-                  className={`py-2 px-1 rounded-xl text-[11px] font-bold font-mono transition-all border ${
-                    selectedBet === bet
-                      ? "bg-[#14f195] text-black border-[#14f195] scale-102 font-extrabold shadow-lg shadow-[#14f195]/20"
-                      : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {(bet / 1000).toFixed(0)}k
-                </button>
-              ))}
+          <div className="space-y-4">
+            {/* Bet sizes selector */}
+            <div>
+              <label className="text-white/40 font-mono text-[9px] uppercase tracking-wider block mb-1.5 text-center">
+                Pilih Nominal Taruhan (Bet Size)
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {standardBets.map((bet) => (
+                  <button
+                    key={bet}
+                    onClick={() => {
+                      audioManager.playClick();
+                      setSelectedBet(bet);
+                    }}
+                    disabled={isSpinning}
+                    className={`py-2 px-0.5 rounded-xl text-[10px] font-bold font-mono transition-all border ${
+                      selectedBet === bet
+                        ? "bg-[#14f195] text-black border-[#14f195] font-extrabold shadow-lg shadow-[#14f195]/20 animate-pulse"
+                        : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {(bet / 1000).toFixed(0)}k
+                  </button>
+                ))}
+              </div>
+
               {/* All In Trigger */}
               <button
                 onClick={() => {
@@ -286,14 +459,40 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                   setSelectedBet(maxAffordableBet);
                 }}
                 disabled={isSpinning}
-                className={`py-2 px-1 col-span-3 rounded-xl text-[11px] font-bold font-mono transition-all border ${
+                className={`py-2 px-1 w-full mt-2 rounded-xl text-[10px] font-bold font-mono transition-all border ${
                   selectedBet === maxAffordableBet
-                    ? "bg-red-500 text-white border-red-500 scale-102"
-                    : "bg-red-500/10 text-red-400 border-red-500/35 hover:bg-red-500/20"
+                    ? "bg-red-500 text-white border-red-500 font-extrabold shadow-lg"
+                    : "bg-red-500/10 text-red-400 border-red-500/25 hover:bg-red-500/20"
                 }`}
               >
-                🔴 SEMUA PERSEN (ALL-IN: Rp {maxAffordableBet.toLocaleString("id-ID")})
+                🔴 ALL-IN (Rp {maxAffordableBet.toLocaleString("id-ID")})
               </button>
+            </div>
+
+            {/* Spin Count Choices */}
+            <div>
+              <label className="text-white/40 font-mono text-[9px] uppercase tracking-wider block mb-1.5 text-center">
+                Jumlah Gasingan Beruntun (Combo Spin)
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {([1, 5, 10, 20] as const).map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => {
+                      audioManager.playClick();
+                      setSpinCountChoice(count);
+                    }}
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold font-mono transition-all border ${
+                      spinCountChoice === count
+                        ? "bg-[#14f195] text-black border-[#14f195] font-extrabold shadow-md shadow-[#14f195]/15"
+                        : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {count}x Spin
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -309,7 +508,13 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
                   pendingResult.amountChanged,
                   pendingResult.balanceAfter,
                   pendingResult.symbols,
-                  pendingResult.isGalaSemua
+                  pendingResult.isGalaSemua,
+                  {
+                    keuangan: walletTracker,
+                    tabungan: tabunganTracker,
+                    hutangPinjol: pinjolTracker,
+                    spinCount: spinCountTracker,
+                  }
                 );
               }}
               className="flex-1 py-3 px-4 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-wider uppercase rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(20,241,149,0.35)] hover:shadow-[0_0_25px_rgba(20,241,149,0.5)] animate-pulse"
@@ -319,18 +524,18 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           ) : (
             <button
               onClick={handleSpin}
-              disabled={isSpinning || (maxAffordableBet <= 0 && currentStats.tabungan <= 0)}
+              disabled={isSpinning || (walletTracker <= 0 && tabunganTracker <= 0)}
               className="flex-1 py-3 px-4 bg-[#14f195] hover:bg-[#1ef19c] active:scale-[0.98] text-black font-sans font-black text-xs tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(20,241,149,0.3)] hover:shadow-[0_0_25px_rgba(20,241,149,0.5)] disabled:bg-white/5 disabled:text-white/20 disabled:border-white/5 disabled:shadow-none"
             >
               {isSpinning ? (
                 <>
                   <RefreshCcw className="w-4 h-4 animate-spin text-black" />
-                  MEMUTAR...
+                  MEMUTAR {spinCountChoice > 1 && `${spinCountChoice} SPIN...`}
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-black text-black" />
-                  TARIK TUAS SLOT!
+                  {spinCountChoice === 1 ? "TARIK TUAS SLOT!" : `PUTAR COMBO ${spinCountChoice}X!`}
                 </>
               )}
             </button>

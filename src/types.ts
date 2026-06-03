@@ -12,6 +12,7 @@ export interface GameStats {
   hutangTeman: number; // friends borrowing
   refusalCount: number; // Consecutive refusals
   spinCount: number; // Slot plays counter
+  initialWinLimit?: number; // Store randomized initial win count limit (0-3)
 }
 
 export type CharacterType = "pejuang_mahar" | "tulang_punggung" | "custom";
