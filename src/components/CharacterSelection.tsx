@@ -8,7 +8,8 @@ interface CharacterSelectionProps {
     type: CharacterType,
     name: string,
     avatar: string,
-    initialStats: GameStats
+    initialStats: GameStats,
+    spouseName: string
   ) => void;
   isLoading?: boolean;
 }
@@ -18,6 +19,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
 
   // Custom Form states
   const [customName, setCustomName] = useState("");
+  const [customSpouseName, setCustomSpouseName] = useState("");
   const [customAvatar, setCustomAvatar] = useState("👨‍💻");
   const [initialSocioTier, setInitialSocioTier] = useState<"miskin_kota" | "menengah_pas" | "mewah_kredit">("menengah_pas");
 
@@ -40,7 +42,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         spinCount: 0,
         initialWinLimit: Math.floor(Math.random() * 4), // 0 to 3 guaranteed initial wins
       };
-      onSelected("pejuang_mahar", APP_SESSION_NAMES.pejuangMahar, "🤵", stats);
+      onSelected("pejuang_mahar", APP_SESSION_NAMES.pejuangMahar, "🤵", stats, APP_SESSION_NAMES.pasanganMahar);
     } else {
       // Inisialisasi Tulang Punggung
       const stats: GameStats = {
@@ -59,13 +61,14 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
         spinCount: 0,
         initialWinLimit: Math.floor(Math.random() * 4), // 0 to 3 guaranteed initial wins
       };
-      onSelected("tulang_punggung", APP_SESSION_NAMES.tulangPunggung, "👨‍👩‍👦", stats);
+      onSelected("tulang_punggung", APP_SESSION_NAMES.tulangPunggung, "👨‍👩‍👦", stats, APP_SESSION_NAMES.pasanganKeluarga);
     }
   };
 
   const handleSelectCustom = (e: React.FormEvent) => {
     e.preventDefault();
     const name = customName.trim() || "Suhu Kustom";
+    const spouse = customSpouseName.trim() || "Neng Gacor";
 
     // Setup stats based on socio tier selected
     let stats: GameStats = {
@@ -99,7 +102,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
       stats.mentalStatus = 15;
     }
 
-    onSelected("custom", name, customAvatar, stats);
+    onSelected("custom", name, customAvatar, stats, spouse);
   };
 
   return (
@@ -290,21 +293,36 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({ onSelect
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {["👨‍💻", "👩‍💼", "🧑‍🎓", "🧑‍🌾"].map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setCustomAvatar(emoji)}
-                      className={`py-1.5 bg-white/5 border rounded-xl text-lg hover:border-[#14f195]/50 hover:bg-[#14f195]/5 transition-all ${
-                        customAvatar === emoji
-                          ? "border-[#14f195] bg-[#14f195]/10"
-                          : "border-white/15"
-                      }`}
-                    >
-                      {emoji}
-                    </button>
+                     <button
+                       key={emoji}
+                       type="button"
+                       onClick={() => setCustomAvatar(emoji)}
+                       className={`py-1.5 bg-white/5 border rounded-xl text-lg hover:border-[#14f195]/50 hover:bg-[#14f195]/5 transition-all ${
+                         customAvatar === emoji
+                           ? "border-[#14f195] bg-[#14f195]/10"
+                           : "border-white/15"
+                       }`}
+                     >
+                       {emoji}
+                     </button>
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Spouse Name input */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-mono tracking-wider text-white/40 block">
+                Nama Pasangan / Pacar / Istri (Penting untuk Terapi Realitas AI)
+              </label>
+              <input
+                type="text"
+                required
+                value={customSpouseName}
+                onChange={(e) => setCustomSpouseName(e.target.value)}
+                placeholder="Contoh: Nisa (Masukkan nama pacar/istrimu asli)"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white/90 focus:outline-none focus:border-[#14f195] focus:ring-1 focus:ring-[#14f195]/45 transition-all"
+              />
             </div>
 
             {/* Socio Economic Tier Selector */}

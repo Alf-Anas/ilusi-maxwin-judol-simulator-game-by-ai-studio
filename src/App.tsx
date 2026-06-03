@@ -126,6 +126,7 @@ export default function App() {
         body: JSON.stringify({
           characterType: activeSession.profile.type,
           characterName: activeSession.profile.name,
+          spouseName: activeSession.profile.spouseName,
           currentStats: activeSession.stats
         })
       });
@@ -226,6 +227,7 @@ export default function App() {
         body: JSON.stringify({
           characterType: session.profile.type,
           characterName: session.profile.name,
+          spouseName: session.profile.spouseName,
           currentStats: session.stats,
           lastAction,
           slotResult: slotDetails,
@@ -292,7 +294,8 @@ export default function App() {
     type: CharacterType,
     name: string,
     avatar: string,
-    initialStats: GameStats
+    initialStats: GameStats,
+    spouseName: string
   ) => {
     // Randomize catastrophe slot spin (4 to 12 spins before total doom)
     const randomizedThreshold = Math.floor(Math.random() * 9) + 4; // 4, 5, - 12
@@ -305,7 +308,8 @@ export default function App() {
         name,
         type,
         avatar,
-        statusMessage: "Penuh asa untuk masa depan gemilang tanpa noda."
+        statusMessage: "Penuh asa untuk masa depan gemilang tanpa noda.",
+        spouseName
       },
       stats: initialStats,
       initialStats: { ...initialStats },

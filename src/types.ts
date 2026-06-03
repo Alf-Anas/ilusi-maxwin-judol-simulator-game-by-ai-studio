@@ -23,6 +23,7 @@ export interface CharacterProfile {
   type: CharacterType;
   avatar: string; // Emoji representing avatar
   statusMessage: string; // Dynamic mood text based on choices
+  spouseName?: string; // Spouse/partner's name
 }
 
 export interface ChoiceLog {

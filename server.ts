@@ -82,6 +82,7 @@ app.post("/api/gemini/generate", async (req, res) => {
     const {
       characterType,
       characterName,
+      spouseName,
       currentStats,
       lastAction,
       slotResult,
@@ -94,17 +95,18 @@ app.post("/api/gemini/generate", async (req, res) => {
     // Map character type in Indonesian for Gemini insight
     let characterDesc = "";
     if (characterType === "pejuang_mahar") {
-      characterDesc = "Anak Muda Pejuang Mahar (sedang menabung nikah, hubungannya dengan tunangan & calon mertua sangat rawan, gampang goyah karena iming-iming modal nikah instan dalam semalam, butuh duit cepat biar gak dianggap miskin).";
+      characterDesc = `Anak Muda Pejuang Mahar (sedang menabung nikah bersama pasangan/kekasihnya bernama '${spouseName || "Nisa"}', hubungannya dengan kekasih & calon mertua sangat rawan, gampang goyah karena iming-iming modal nikah instan dalam semalam, butuh duit cepat biar gak dianggap miskin).`;
     } else if (characterType === "tulang_punggung") {
-      characterDesc = "Kepala Keluarga Tulang Punggung (punya cicilan rumah/kontrakan, biaya sekolah anak, tabungan masa depan keluarga, istri penyabar dan anak yang butuh makan, gampang tergoda melunasi cicilan dan utang bulanan secara instan dalam semalam).";
+      characterDesc = `Kepala Keluarga Tulang Punggung (punya cicilan rumah/kontrakan, biaya sekolah anak, tabungan masa depan keluarga, istri penyabar bernama '${spouseName || "Siti"}' dan anak yang butuh makan, gampang tergoda melunasi cicilan dan utang bulanan secara instan dalam semalam).`;
     } else {
-      characterDesc = `Karakter Kustom bernama '${characterName}' dengan status keuangan: ${JSON.stringify(currentStats)}`;
+      characterDesc = `Karakter Kustom bernama '${characterName}' yang berpasangan dengan '${spouseName || "Pasangan"}', dengan status keuangan awal: ${JSON.stringify(currentStats)}.`;
     }
 
     // Detail current variables for context and simulation tracking
     const statsContext = `
 STATUS SAAT INI (PENTING):
 - Nama Karakter: ${characterName}
+- Nama Pasangan (Tunangan/Istri): ${spouseName || "Pasangan"} (PENTING: Gunakan nama ini ketika bercerita tentang pasangannya, chat batin, tuntutan pernikahan, chat WA darurat, dsb!)
 - Tipe Karakter: ${characterDesc}
 - Uang Sekarang: Rp ${currentStats.keuangan.toLocaleString("id-ID")}
 - Tabungan Masa Depan/Mahar: Rp ${currentStats.tabungan.toLocaleString("id-ID")}
@@ -153,6 +155,7 @@ Karakteristik Narasi:
    - **Skenario Keluarga dipukuli debt collector**: Rumahmu digerebek di malam hari oleh segerombolan debt collector beringas dari pinjol ilegal. Pintu didobrak, barang disita paksa, dan pasangan/ibumu dipukuli/disiksa secara brutal di depan matamu sendiri karena kamu tidak bisa membayar cicilan bunga yang menggunung.
    - **Skenario Penjara / Gelandangan**: Kamu diseret paksa polisi karena penipuan/menggelapkan dana kantor, atau dibuang di jalanan menjadi gelandangan gila dengan bayang-bayang depresi slot zeus yang tiada henti mendengung di kepalamu.
 7. Tombol pilihan (pilihan) HARUS berupa frasa naratif dinamis yang mewakili gumaman batin karakter (misal: "Aduh, gila ini mah, coba depo gocap lagi kali ya siapa tau hoki" atau "Engga, mending gw matiin hp, gw mau denger ceramah biar tobat"). Jika pemain sudah ludes bangkrut (Uang Rp 0), pilihan batinnya harus memancarkan penyesalan kelam tanpa menyediakan aksi 'play' yang aktif.
+8. PENTING - SEBUTKAN NAMA PASANGAN: Jika bercerita tentang pasangan, tunangan, atau istri karakter, selalu panggil dengan nama aslinya yaitu '${spouseName || "pasangan"}'. Masukkan dia ke dalam obrolan chat Whatsapp atau dialog narasi agar terasa sangat personal dan emosional bagi pemain.
 
 Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
 {
@@ -243,29 +246,30 @@ Jika stat keuangan habis dan stress level tinggi, buat surat atau percakapan emo
 // API: Life Evaluation / Status Analysis using Server-Side Gemini API
 app.post("/api/gemini/analyze", async (req, res) => {
   try {
-    const { characterType, characterName, currentStats } = req.body;
+    const { characterType, characterName, spouseName, currentStats } = req.body;
     const client = getGeminiClient();
 
     let characterDesc = "";
     if (characterType === "pejuang_mahar") {
-      characterDesc = "Anak Muda Pejuang Mahar (punya target tabungan nikah, relasi tunangan yang sensitif, calon mertua cerewet)";
+      characterDesc = `Anak Muda Pejuang Mahar (punya target tabungan nikah, relasi tunangan yang sensitif bersama pacar bernama '${spouseName || "Nisa"}', calon mertua cerewet)`;
     } else if (characterType === "tulang_punggung") {
-      characterDesc = "Kepala Keluarga Tulang Punggung (punya cicilan rumah, tagihan sekolah anak, nafkah bulanan istri)";
+      characterDesc = `Kepala Keluarga Tulang Punggung (punya cicilan rumah, tagihan sekolah anak, nafkah bulanan istri bernama '${spouseName || "Siti"}')`;
     } else {
-      characterDesc = "Pemain Kustom";
+      characterDesc = `Pemain Kustom bernama '${characterName}' dengan pasangan bernama '${spouseName || "Pasangan"}'`;
     }
 
     const systemInstruction = `
 Kamu adalah Psikolog Perilaku Klinis sekaligus Konselor Keuangan yang kritis, dingin, sangat realistis, dan hantam keras dalam game "Ilusi Maxwin".
 Tugasmu adalah menganalisis statistik batin dan finansial karakter korban judi online saat ini dan memberikan evaluasi kehidupan secara jujur, blak-blakan, tanpa ramah tamah palsu.
-Gunakan bahasa Indonesia yang tajam, agak menyindir, namun mendidik dan memberikan kesadaran penuh.
+Panggil pasangannya/istrinya dengan nama aslinya (yaitu '${spouseName || "pasangan"}') jika membahas hubungan sosial atau dampak kebohongan judol pada kehidupan pribadinya demi memberikan shock therapy asmara yang maksimal.
+Gunkaan bahasa Indonesia yang tajam, agak menyindir, namun mendidik dan memberikan kesadaran penuh.
 Sesuaikan kritik batinmu dengan statistik batin mereka (misal jika tabungan/keuangan menipis, sebutkan tentang kehancuran masa depan atau kejatuhan harga diri; jika hubungan dengan pasangan anjlok, sebutkan kehancuran asmara atau ancaman cerai/batal nikah).
 
 Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
 {
   "ringkasan": "Analisis tajam 2-3 kalimat yang menampar batin pemain tentang status keseluruhannya saat ini.",
   "finansialStatus": "Uraian kondisi keuangan, tabungan, dan utang pinjolnya saat ini secara blak-blakan.",
-  "sosialStatus": "Uraian relasi dia dengan tunangan/istri, keluarga, dan teman yang terdampak judi.",
+  "sosialStatus": "Uraian relasi dia dengan tunangan/istri (gunakan nama aslinya), keluarga, dan teman yang terdampak judi.",
   "mentalStatus": "Uraian batin, kesehatan mental, serta tingkat kestabilan batinnya saat ini."
 }
 `;
@@ -274,6 +278,7 @@ Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
       contents: `
 Evaluasilah batin dan status kehidupan karakter korban judi ini secara blak-blakan sesuai schema JSON:
 - Nama Karakter: ${characterName}
+- Nama Pasangan (Tunangan / Istri): ${spouseName || "pasangan"}
 - Tipe Karakter: ${characterDesc}
 - Uang Pegangan: Rp ${currentStats.keuangan.toLocaleString("id-ID")}
 - Tabungan Masa Depan: Rp ${currentStats.tabungan.toLocaleString("id-ID")}
