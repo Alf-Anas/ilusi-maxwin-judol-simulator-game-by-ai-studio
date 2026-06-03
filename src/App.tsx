@@ -492,16 +492,25 @@ export default function App() {
 
         // Pinjol automatic debt limits & emergency savings breakout if out of cash
         if (nextStats.keuangan <= 100000) {
-          const availableOptions: string[] = [];
-          if (nextStats.hutangPinjol < 35000000) availableOptions.push("pinjol");
-          if (nextStats.tabungan > 0) availableOptions.push("tabungan");
-          if (nextStats.hutangTeman < 15000000 && nextStats.hubunganTeman > 20) availableOptions.push("teman");
-          if (nextStats.asetMotor) availableOptions.push("motor");
-          if (nextStats.asetMobil) availableOptions.push("mobil");
-          if (nextStats.asetRumah) availableOptions.push("rumah");
+          // Follow strict psychological descent priority:
+          // Uang Pegangan (none) -> Tabungan -> Pinjam Teman -> Pinjol -> Motor -> Mobil -> Rumah
+          let chosenOption: string | null = null;
 
-          if (availableOptions.length > 0) {
-            const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+          if (nextStats.tabungan > 0) {
+            chosenOption = "tabungan";
+          } else if (nextStats.hutangTeman < 15000000 && nextStats.hubunganTeman > 20) {
+            chosenOption = "teman";
+          } else if (nextStats.hutangPinjol < 35000000) {
+            chosenOption = "pinjol";
+          } else if (nextStats.asetMotor) {
+            chosenOption = "motor";
+          } else if (nextStats.asetMobil) {
+            chosenOption = "mobil";
+          } else if (nextStats.asetRumah) {
+            chosenOption = "rumah";
+          }
+
+          if (chosenOption !== null) {
             systemActions.push(chosenOption);
             let drawAmount = 0;
 
@@ -866,10 +875,13 @@ export default function App() {
             {/* Top Status Header */}
             <div 
               onClick={() => {
+                if (showSlotOverlay) return;
                 audioManager.playClick();
                 setIsProfileOpen(true);
               }}
-              className="bg-stone-900/95 border border-stone-850 hover:border-stone-700 rounded-2xl p-3.5 flex justify-between items-center gap-4 cursor-pointer hover:bg-stone-850/90 active:scale-[0.99] transition-all sticky top-[57px] sm:top-[65px] z-25 shadow-xl group"
+              className={`bg-stone-900/95 border border-stone-850 hover:border-stone-700 rounded-2xl p-3.5 flex justify-between items-center gap-4 cursor-pointer hover:bg-stone-850/90 active:scale-[0.99] transition-all sticky top-[57px] sm:top-[65px] shadow-xl group ${
+                showSlotOverlay ? "z-10 opacity-60 pointer-events-none" : "z-25"
+              }`}
             >
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl p-1 bg-stone-950 rounded-lg group-hover:scale-110 transition-transform">{activeSession.profile.avatar}</span>
@@ -899,7 +911,9 @@ export default function App() {
             </div>
 
             {/* THE CORE GAME BOARD */}
-            <div className="bg-zinc-950 border border-stone-900/60 rounded-3xl p-5 md:p-6 shadow-2xl relative min-h-[380px] flex flex-col justify-between">
+            <div className={`bg-zinc-950 border border-stone-900/60 rounded-3xl p-5 md:p-6 shadow-2xl relative min-h-[380px] flex flex-col justify-between ${
+              showSlotOverlay ? "z-30" : "z-10"
+            }`}>
 
               {/* Overlay Slot block if spinning */}
               {showSlotOverlay ? (

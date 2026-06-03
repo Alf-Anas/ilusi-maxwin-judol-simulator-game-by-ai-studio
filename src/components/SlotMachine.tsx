@@ -296,20 +296,29 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
         // Fund verification & dynamic resource injection simulator
         if (localWallet < selectedBet) {
-          const availableOptions: string[] = [];
-          if (localPinjol < 35000000) availableOptions.push("pinjol");
-          if (localTabungan > 0) availableOptions.push("tabungan");
-          if (localHutangTeman < 15000000 && localHubunganTeman > 20) availableOptions.push("teman");
-          if (localAsetMotor) availableOptions.push("motor");
-          if (localAsetMobil) availableOptions.push("mobil");
-          if (localAsetRumah) availableOptions.push("rumah");
+          // Follow strict psychological descent priority:
+          // Uang Pegangan (none) -> Tabungan -> Pinjam Teman -> Pinjol -> Motor -> Mobil -> Rumah
+          let chosenOption: string | null = null;
 
-          if (availableOptions.length > 0) {
-            const chosenOption = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+          if (localTabungan > 0) {
+            chosenOption = "tabungan";
+          } else if (localHutangTeman < 15000000 && localHubunganTeman > 20) {
+            chosenOption = "teman";
+          } else if (localPinjol < 35000000) {
+            chosenOption = "pinjol";
+          } else if (localAsetMotor) {
+            chosenOption = "motor";
+          } else if (localAsetMobil) {
+            chosenOption = "mobil";
+          } else if (localAsetRumah) {
+            chosenOption = "rumah";
+          }
+
+          if (chosenOption !== null) {
             let drawAmount = 0;
             let logMsg = "";
 
-            if (chosenOption && !systemActionsRef.current.includes(chosenOption)) {
+            if (!systemActionsRef.current.includes(chosenOption)) {
               systemActionsRef.current.push(chosenOption);
             }
 
