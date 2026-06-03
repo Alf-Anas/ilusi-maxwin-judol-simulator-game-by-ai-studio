@@ -248,6 +248,7 @@ export default function App() {
           slotResult: slotDetails,
           refusalCount: session.stats.refusalCount,
           turnCount: session.turnCount,
+          choiceTeks,
         }),
       });
 
@@ -612,10 +613,12 @@ export default function App() {
         body: JSON.stringify({
           characterType: activeSession.profile.type,
           characterName: activeSession.profile.name,
+          spouseName: activeSession.profile.spouseName,
           currentStats: activeSession.stats,
           lastAction: "refuse",
           refusalCount: 7,
-          turnCount: activeSession.turnCount
+          turnCount: activeSession.turnCount,
+          choiceTeks: lastSelectedChoiceTeks,
         })
       });
       const data = await response.json();
@@ -676,10 +679,12 @@ export default function App() {
         body: JSON.stringify({
           characterType: activeSession.profile.type,
           characterName: activeSession.profile.name,
+          spouseName: activeSession.profile.spouseName,
           currentStats: activeSession.stats,
           lastAction: "play",
           slotResult: { won: false, amountChanged: -99999999, balanceAfter: 0 },
-          turnCount: activeSession.turnCount
+          turnCount: activeSession.turnCount,
+          choiceTeks: lastSelectedChoiceTeks,
         })
       });
       const data = await response.json();

@@ -88,6 +88,7 @@ app.post("/api/gemini/generate", async (req, res) => {
       slotResult,
       refusalCount,
       turnCount = 1,
+      choiceTeks,
     } = req.body;
 
     const client = getGeminiClient();
@@ -103,7 +104,7 @@ app.post("/api/gemini/generate", async (req, res) => {
     }
 
     // Detail current variables for context and simulation tracking
-    const statsContext = `
+    let statsContext = `
 STATUS SAAT INI (PENTING):
 - Nama Karakter: ${characterName}
 - Nama Pasangan (Tunangan/Istri): ${spouseName || "Pasangan"} (PENTING: Gunakan nama ini ketika bercerita tentang pasangannya, chat batin, tuntutan pernikahan, chat WA darurat, dsb!)
@@ -118,6 +119,10 @@ STATUS SAAT INI (PENTING):
 - Refusal count berturut-turut: ${refusalCount}/7
 - Jumlah Giliran: ${turnCount}
 `;
+
+    if (choiceTeks) {
+      statsContext += `\nPilihan batin/tindakan yang baru saja diambil oleh pemain: "${choiceTeks}"\n`;
+    }
 
     // Inform Gemini about last action to steer narrative
     let contextActionPrompt = "";
@@ -151,12 +156,42 @@ STATUS SAAT INI (PENTING):
 
       contextActionPrompt = `${slotInfo}.${desperateActs}${sequenceText}\nBerikan respons manipulatif bandar atau kepalsuan kemenangan / kekesalan rungkad. Jika dia menang, bandar memberikan ilusi dopamin luar biasa agar dia mau depo lebih gede. Jika dia rungkad, bandar memanasi otaknya agar 'bales dendam'. Tampilkan juga sisipan notifikasi chat panik, DM medsos, atau bisikan batin. Hubungkan dengan aksi nekat dan rincian kronologi transaksi di atas secara detail jika ada.`;
     } else if (lastAction === "refuse") {
-      contextActionPrompt = `Dia memilih MENOLAK main judol (Refusal berturut-turut: ${refusalCount}/7). Berikan godaan yang lebih gila: misal obrolan grup WhatsApp teman tongkrongan yang flexing habis WD 20 juta malam ini, DM Instagram influencer pamer kunci mobil baru hasil slot, atau video random Facebook berkedok 'Amal Sedekah Admin Gacor' yang mendesak dia bermain sekarang juga. Hubungkan godaan ini dengan kondisi pribadinya (Nikahan atau cicilan keluarga)!`;
+      if (refusalCount >= 7) {
+        contextActionPrompt = `HEBAT! Pemain berhasil MENOLAK godaan judi online secara konsisten sebanyak 7 kali berturut-turut (${refusalCount}/7). Dia secara sadar telah menang dan lolos dari jeratan maut lingkaran setan judol! 
+Selamatkan jiwanya sekarang juga. Berikan narasi penutup yang indah, penuh haru, penuh inspirasi, dan rasa kelegaan luar biasa. Jangan berikan godaan judi apa-apa lagi! Tampilkan notifikasi penuh haru dari pasangannya ('${spouseName || "pasangan"}') atau keluarganya yang bangga atas keteguhannya menolak judol. Cerita berakhir dengan kebahagiaan sejati.`;
+      } else {
+        contextActionPrompt = `Dia memilih MENOLAK main judol (Refusal berturut-turut: ${refusalCount}/7). Pilihan batinnya barusan adalah: "${choiceTeks}". Berikan godaan yang lebih gila karena dia berhasil bertahan: misal obrolan grup WhatsApp teman tongkrongan yang flexing habis WD 20 juta malam ini, DM Instagram influencer pamer kunci mobil baru hasil slot, atau video random Facebook berkedok 'Amal Sedekah Admin Gacor' yang mendesak dia bermain sekarang juga. Hubungkan godaan ini dengan kondisi pribadinya (Nikahan atau cicilan keluarga)!`;
+      }
     } else if (lastAction === "hesitate") {
-      contextActionPrompt = `Dia RAGU-RAGU / bimbang. Berikan rayuan licik dari chat temannya ('Coba depo goceng doang bro, masa takut sih cowok lembek'), bisikan setan batin sendiri, atau notifikasi deposit khusus 'JP PAUS DEPO 10K BONUS 30K LANGSUNG GAIRAH MELEDAK'.`;
+      contextActionPrompt = `Dia RAGU-RAGU / bimbang. Pilihan batinnya barusan adalah: "${choiceTeks}". Berikan rayuan licik dari chat temannya ('Coba depo goceng doang bro, masa takut sih cowok lembek'), bisikan setan batin sendiri, atau notifikasi deposit khusus 'JP PAUS DEPO 10K BONUS 30K LANGSUNG GAIRAH MELEDAK'.`;
     }
 
-    const systemInstruction = `
+    let systemInstruction = "";
+    if (refusalCount >= 7) {
+      systemInstruction = `
+Kamu adalah Psikolog Perilaku yang hangat, penuh empati, dan bijaksana dari game "Ilusi Maxwin".
+Pemain telah BERHASIL MENUMPAS kebiasaan/godaan judi online dengan menolak secara konsisten sebanyak 7 kali berturut-turut!
+Tugasmu saat ini adalah memberikan apresiasi yang mendalam, mengharukan, penuh inspirasi, dan rasa kelegaan luar biasa atas kemenangan batin mereka.
+Tampilkan juga notifikasi chat penuh air mata kebahagiaan dari pasangannya ('${spouseName || "pasangan"}') yang sangat bangga atas perubahan sadar kekasih/suaminya yang memilih kehidupan nyata dibanding ilusi maxwin.
+Gunakan format visualisasi teks bercerita dalam MARKDOWN yang kaya:
+- Blockquotes untuk chat penuh haru atau surat kebahagiaan dari pasangan.
+- Teks yang mengalir indah, menyentuh relung batin, dan menyadarkan betapa bernilainya hidup tanpa judol.
+Jangan berikan rayuan judi atau godaan slot sama sekali!
+
+Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
+{
+  "status": "victory_achieved",
+  "narasi": "Teks cerita kelolosan batin yang indah, mengharukan, dan penuh inspirasi dalam Markdown...",
+  "pilihan": [
+    { "teks": "Saya menang batin, saya memilih hidup nyata yang berkah dan damai.", "action": "refuse" },
+    { "teks": "Bersyukur saya tersadar sebelum terlambat.", "action": "refuse" },
+    { "teks": "Terima kasih atas teguran batin ini.", "action": "refuse" }
+  ]
+}
+Jangan sertakan markdown \`\`\`json atau teks lain di luar JSON murni itu.
+`;
+    } else {
+      systemInstruction = `
 Kamu adalah Sistem Game AI Manipulatif sekaligus Psikolog Perilaku yang dingin, realistis, dan Narrative Designer dari game "Ilusi Maxwin: Judol Simulator Game".
 Tugasmu adalah merekayasa emosi, godaan, dan konsekuensi tragis dari kecanduan judi online demi memberikan kesadaran psikologis penuh kepada pemain.
 
@@ -192,6 +227,7 @@ Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
 Sediakan tepat 3 pilihan di setiap respon (terdiri dari aksi play, refuse, dan hesitate).
 Jangan sertakan markdown \`\`\`json atau teks lain di luar JSON murni itu.
 `;
+    }
 
     const response = await generateWithFallback(client, {
       contents: `
@@ -293,7 +329,25 @@ app.post("/api/gemini/analyze", async (req, res) => {
       });
     }
 
-    const systemInstruction = `
+    let systemInstruction = "";
+    if (currentStats && currentStats.spinCount === 0) {
+      systemInstruction = `
+Kamu adalah Psikolog Perilaku Klinis sekaligus Konselor Keuangan yang sangat bangga, penuh respek, dan bijaksana dalam game "Ilusi Maxwin".
+Pemain ini SAMA SEKALI BELUM PERNAH MEMUTAR SLOT/BERMAIN JUDI ONLINE (0 spin)! Mereka adalah orang yang berhasil memenangkan batinnya dari jebakan ini sejak awal.
+Tugasmu adalah menganalisis statistik finansial dan sosial mereka yang UTUH DAN SEHAT, lalu memberikan apresiasi yang luar biasa tinggi atas kecerdasan rasional dan baja batin mereka yang menampik semua ilusi bandar.
+Puji mereka, ingatkan bahwa tunangan/istri tercintanya yaitu '${spouseName || "pasangan"}' sangat beruntung memiliki kekasih/suami yang rasional, berkepala dingin, dan lurus.
+Ingatkan juga bahwa godaan di luar sana tidak akan pernah berhenti, sehingga mereka harus tetap mempertahankan kedaulatan logikanya.
+
+Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
+{
+  "ringkasan": "Apresiasi psikologis 2-3 kalimat yang memuji ketegasan batin pemain karena berhasil menolak/menghindari perangkap judol semenjak awal tanpa luluh sedikit pun.",
+  "finansialStatus": "Uraian sangat positif tentang keuangan dan tabungan masadepannya yang utuh, sehat, dan bebas dari jeratan pinjol ilegal.",
+  "sosialStatus": "Uraian bahagia tentang keharmonisan relasinya dengan tunangan/istri (panggil '${spouseName || "pasangan"}') dan keluarga yang berjalan penuh cinta karena tidak dicemari dusta slot.",
+  "mentalStatus": "Uraian kedamaian batin, kesehatan mental yang prima, dan tidur yang nyenyak tanpa dikejar-kejar debt collector."
+}
+`;
+    } else {
+      systemInstruction = `
 Kamu adalah Psikolog Perilaku Klinis sekaligus Konselor Keuangan yang kritis, dingin, sangat realistis, dan hantam keras dalam game "Ilusi Maxwin".
 Tugasmu adalah menganalisis statistik batin dan finansial karakter korban judi online saat ini dan memberikan evaluasi kehidupan secara jujur, blak-blakan, tanpa ramah tamah palsu.
 Panggil pasangannya/istrinya dengan nama aslinya (yaitu '${spouseName || "pasangan"}') jika membahas hubungan sosial atau dampak kebohongan judol pada kehidupan pribadinya demi memberikan shock therapy asmara yang maksimal.
@@ -309,6 +363,7 @@ Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
   "mentalStatus": "Uraian batin, kesehatan mental, serta tingkat kestabilan batinnya saat ini."
 }
 `;
+    }
 
     const response = await generateWithFallback(client, {
       contents: `
@@ -324,6 +379,7 @@ Evaluasilah batin dan status kehidupan karakter korban judi ini secara blak-blak
 - Keharmonisan Pasangan: ${currentStats.hubunganPasangan}/100
 - Keharmonisan Keluarga: ${currentStats.hubunganKeluarga}/100
 - Hubungan Teman: ${currentStats.hubunganTeman}/100
+- Jumlah Putaran Slot (Spin) yang pernah dimainkan: ${currentStats.spinCount || 0} kali
 ${actionsDesc}
 `,
       config: {
