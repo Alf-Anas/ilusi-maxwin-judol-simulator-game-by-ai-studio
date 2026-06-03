@@ -26,6 +26,46 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
+// Helper to perform content generation using 'gemini-3.1-flash-lite' first,
+// and if it returns a 429 rate limit error, fallback to 'gemma-4-26b'.
+async function generateWithFallback(
+  client: GoogleGenAI,
+  params: {
+    contents: any;
+    config?: any;
+  }
+) {
+  try {
+    console.log("Attempting generation with core model: gemini-3.1-flash-lite");
+    const response = await client.models.generateContent({
+      ...params,
+      model: "gemini-3.1-flash-lite",
+    });
+    return response;
+  } catch (error: any) {
+    // Check if error represents a 429 rate-limiting status
+    const is429 =
+      error.status === 429 ||
+      error.statusCode === 429 ||
+      (error.message &&
+        (error.message.includes("429") ||
+          error.message.toLowerCase().includes("resource_exhausted") ||
+          error.message.toLowerCase().includes("quota")));
+
+    if (is429) {
+      console.warn("Got 429 error on gemini-3.1-flash-lite. Retrying with fallback model: gemma-4-26b");
+      const response = await client.models.generateContent({
+        ...params,
+        model: "gemma-4-26b",
+      });
+      return response;
+    }
+
+    // Rethrow any other error so the route handlers can catch it or use static fallbacks
+    throw error;
+  }
+}
+
 const app = express();
 const PORT = 3000;
 
@@ -128,8 +168,7 @@ Sediakan tepat 3 pilihan di setiap respon (terdiri dari aksi play, refuse, dan h
 Jangan sertakan markdown \`\`\`json atau teks lain di luar JSON murni itu.
 `;
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+    const response = await generateWithFallback(client, {
       contents: `
 Konteks Game saat ini:
 ${statsContext}
@@ -231,8 +270,7 @@ Kembalikan respon SELALU dalam bentuk JSON murni dengan format schema berikut:
 }
 `;
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+    const response = await generateWithFallback(client, {
       contents: `
 Evaluasilah batin dan status kehidupan karakter korban judi ini secara blak-blakan sesuai schema JSON:
 - Nama Karakter: ${characterName}
