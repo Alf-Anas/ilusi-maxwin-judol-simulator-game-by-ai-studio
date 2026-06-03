@@ -19,6 +19,18 @@ interface SlotMachineProps {
 
 const SLOT_SYMBOLS = ["🎰", "🍒", "💎", "💰", "❌"];
 
+// Get win rate based on bet sizes relative to current wallet
+const getWinRate = (bet: number, maxWallet: number): number => {
+  // If player did an explicit all-in with high stake, make it highly addictive but lower odds
+  if (bet === maxWallet && maxWallet > 500000) return 0.03; // All-In: 3%
+  if (bet <= 50000) return 0.20;       // 50k: 20%
+  if (bet <= 200000) return 0.15;      // 100k/200k: 15%
+  if (bet <= 500000) return 0.10;      // 500k: 10%
+  if (bet <= 1000500) return 0.07;     // 1000k: 7%
+  if (bet <= 2500500) return 0.05;     // 2500k: 5%
+  return 0.03;
+};
+
 export const SlotMachine: React.FC<SlotMachineProps> = ({
   currentStats,
   galaSpinThreshold,
@@ -95,6 +107,9 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     // Sound cue
     audioManager.playSpin();
 
+    // Check if it is the absolute introductory play (retention hook)
+    const isInitialHook = spinCountTracker === 0 && selectedBet <= 200000;
+
     if (spinCountChoice === 1) {
       // 1. LEGACY SINGLE PLAY: Maintain high individual slot tension
       let reelsInterval: NodeJS.Timeout;
@@ -114,19 +129,16 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         setIsSpinning(false);
         setHasSpun(true);
 
-        const winLimit = currentStats.initialWinLimit !== undefined ? currentStats.initialWinLimit : 2;
-        const currentSpinNum = spinCountTracker + 1;
-        const isGuaranteedWin = currentSpinNum <= winLimit;
-        const isNormalWin = Math.random() < 0.05; // Subsequent is strictly 5% win chance
+        const winRate = getWinRate(selectedBet, walletTracker);
+        const isNormalWin = !isInitialHook && Math.random() < winRate;
+        const finalWon = isInitialHook || isNormalWin;
 
-        let finalWon = false;
         let finalGain = 0;
         let finalSymbols = ["❌", "❌", "❌"];
 
-        if (isGuaranteedWin || isNormalWin) {
-          finalWon = true;
+        if (finalWon) {
           // Winner!
-          const profitPercentage = isGuaranteedWin
+          const profitPercentage = isInitialHook
             ? (0.2 + Math.random() * 0.3) // 20% - 50% initial win hook
             : (0.5 + Math.random() * 1.0); // 50% - 150% standard subsequent jackpot
           
@@ -143,7 +155,6 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           audioManager.playWin();
         } else {
           // Loss
-          finalWon = false;
           finalGain = -selectedBet;
 
           const symbolA = SLOT_SYMBOLS[Math.floor(Math.random() * 3)];
@@ -194,13 +205,14 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
           setIsSpinning(false);
           setHasSpun(true);
 
-          const finalWon = totalWins > 0;
+          // Correct win/lose based on total financial results!
+          const finalWon = accumulatedNetChange > 0;
 
           setPendingResult({
             won: finalWon,
             amountChanged: accumulatedNetChange,
             balanceAfter: localWallet,
-            symbols: ["🎰", totalWins > 0 ? "💰" : "❌", totalWins > 0 ? "💎" : "❌"],
+            symbols: ["🎰", finalWon ? "💰" : "❌", finalWon ? "💎" : "❌"],
             isGalaSemua: false,
           });
 
@@ -208,13 +220,13 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
             won: finalWon,
             gain: accumulatedNetChange,
             text: finalWon
-              ? `Multi-Spin Selesai: Menang ${totalWins}x! Selisih: ${accumulatedNetChange >= 0 ? "+" : ""}Rp ${accumulatedNetChange.toLocaleString("id-ID")}`
+              ? `Multi-Spin Selesai: Untung! Selisih: ${accumulatedNetChange >= 0 ? "+" : ""}Rp ${accumulatedNetChange.toLocaleString("id-ID")}`
               : `Total Rungkad: Sesi selesai dengan kerugian -Rp ${Math.abs(accumulatedNetChange).toLocaleString("id-ID")}`
           });
 
           if (finalWon) {
             audioManager.playWin();
-            setSlotMessage(`Putaran selesai! Berhasil menang sebanyak ${totalWins}x. Buruan lanjut depo biar JP Maxwin!`);
+            setSlotMessage(`Putaran selesai! Berhasil menang sebanyak ${totalWins}x dan dapet untung. Buruan lanjut depo biar JP Maxwin!`);
           } else {
             audioManager.playLose();
             setSlotMessage("Dewa Zeus tertawa puas. Seluruh modalmu ludes tersedot gasingan maut.");
@@ -250,8 +262,11 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
             setIsSpinning(false);
             setHasSpun(true);
 
+            // Correct win/lose based on final financial changes
+            const finalWon = accumulatedNetChange > 0;
+
             setPendingResult({
-              won: totalWins > 0,
+              won: finalWon,
               amountChanged: accumulatedNetChange,
               balanceAfter: 0,
               symbols: ["❌", "❌", "❌"],
@@ -259,7 +274,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
             });
 
             setJustResult({
-              won: false,
+              won: finalWon,
               gain: accumulatedNetChange,
               text: `Kehabisan modal di tengah jalan pada gasingan ke-${currentStep + 1}.`
             });
@@ -273,19 +288,25 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         localSpinCount += 1;
         accumulatedNetChange -= selectedBet;
 
-        const winLimit = currentStats.initialWinLimit !== undefined ? currentStats.initialWinLimit : 2;
-        const isGuaranteedWin = localSpinCount <= winLimit;
-        const isNormalWin = Math.random() < 0.05; // 5% win chance standard subsequently
-
+        const winRate = getWinRate(selectedBet, walletTracker);
         let stepWon = false;
+
+        if (isInitialHook && spinCountChoice === 5) {
+          // Absolute win for 5x spins at the start: Win on spin 1, 3, and 5
+          if (currentStep === 0 || currentStep === 2 || currentStep === 4) {
+            stepWon = true;
+          }
+        } else {
+          stepWon = Math.random() < winRate;
+        }
+
         let stepGain = 0;
 
-        if (isGuaranteedWin || isNormalWin) {
-          stepWon = true;
+        if (stepWon) {
           totalWins += 1;
-          const profitPercentage = isGuaranteedWin 
-            ? (0.2 + Math.random() * 0.3) 
-            : (0.5 + Math.random() * 1.0);
+          const profitPercentage = isInitialHook 
+            ? (0.7 + Math.random() * 0.3) // Higher, generous returns for initial welcome play to hook player (70% - 100%)
+            : (0.5 + Math.random() * 1.0); // 50% - 150% standard subsequent jackpot
           
           stepGain = Math.round(selectedBet * (1 + profitPercentage));
           localWallet += stepGain;
